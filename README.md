@@ -63,7 +63,8 @@ hoặc bấm **⬇ Tải / In workbook PDF** để in ra viết tay.
 - Nguồn là 30 file Word trong `EQGYM/word-new/`. Script tạo lại toàn bộ (cần Word + Python `pywin32`, `pymupdf`):
   `python tools/wb_build.py` (đường dẫn nguồn `SRC` khai báo đầu script) — script tự **lọc ghi chú sản xuất nội bộ**
   như "(slide chữ)", "(AI chia ảnh...)", "(Lúc tạo video...)", "(chèn/ghép ảnh ... khi edit)" trước khi xuất.
-- Muốn cập nhật 1 bài: sửa file Word → chạy lại script với số bài → cập nhật số trang trong `WORKBOOK` nếu đổi.
+- Muốn cập nhật 1 bài: sửa file Word → chạy lại script với số bài → cập nhật số trang trong `WORKBOOK` nếu đổi → tăng `WB_VER` trong `index.html` để trình duyệt bỏ cache ảnh cũ.
+- **Xem phóng to**: chạm vào trang → toàn màn hình; trang workbook được render thẳng từ PDF bằng PDF.js (cdnjs) nên chữ nét ở mọi mức zoom; nếu không tải được thư viện (offline/chặn CDN) app tự dùng ảnh JPG.
 
 ## 🎓 Giấy chứng nhận hoàn thành
 
