@@ -21,8 +21,8 @@ SRC = r"C:\Users\user\Downloads\Huân\EQGYM\word-new"          # thư mục ch�
 TMP = os.path.join(tempfile.gettempdir(), "eqgym_wb_tmp")     # bản copy tạm (tránh Protected View)
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "workbook")
 ONLY = [int(x) for x in sys.argv[1:]] if len(sys.argv) > 1 else None
-ZOOM = 1.85          # 595pt * 1.85 ~= 1100px bề ngang ảnh trang
-JPG_Q = 80
+ZOOM = 2.4           # 595pt * 2.4 ~= 1430px bề ngang ảnh trang (đủ nét trên màn hình 3x + zoom)
+JPG_Q = 82
 
 os.makedirs(TMP, exist_ok=True); os.makedirs(OUT, exist_ok=True)
 
@@ -112,8 +112,8 @@ try:
             if RESID.search(t) or (re.search(r"[:.]\s*\.\s*$", t) and not re.search(r"\.{3,}", t)):
                 resid.append(t[:110])
         after = doc.Paragraphs.Count
-        # 5) xuất PDF (17 = wdExportFormatPDF, OptimizeFor 1 = dung lượng nhỏ)
-        doc.ExportAsFixedFormat(pdf, 17, False, 1, 0, 0, 0, 0, False, False, 0, False, True, False)
+        # 5) xuất PDF (17 = wdExportFormatPDF, OptimizeFor 0 = chất lượng in, giữ ảnh nét)
+        doc.ExportAsFixedFormat(pdf, 17, False, 0, 0, 0, 0, 0, False, False, 0, False, True, False)
         doc.Close(False)
         # 6) render ảnh từng trang
         d = fitz.open(pdf); outdir = os.path.join(OUT, f"w{n}")

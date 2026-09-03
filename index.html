@@ -335,7 +335,7 @@ function load(){
 }
 function dflt(){ return {done:[],ans:{},scores:{},graded:{},streak:0,last:null,bounty:0,scen:{},history:{},chat:[],practices:0,quiz:null,qans:{},cert:null}; }
 let S=load();
-let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:'',certOpen:false,certImg:null};
+let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:'',certOpen:false,certImg:null,zv:null};
 let snd; try{ snd=Object.assign({bgm:true,sfx:true,track:0,vol:0.5}, JSON.parse(localStorage.getItem('eqgym_sound_v1'))||{}); }catch(e){ snd={bgm:true,sfx:true,track:0,vol:0.5}; }
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ _mem=S; } scheduleSync(); syncPoints(); }
 function saveSnd(){ try{ localStorage.setItem('eqgym_sound_v1',JSON.stringify(snd)); }catch(e){} }
@@ -932,8 +932,9 @@ function progressPanel(n){
 function lessonComic(n,step){
   const N=step.pages||COMICS[n]||0;
   let h=`<div style="display:inline-flex;align-items:center;gap:8px;font-family:'Space Grotesk';font-size:11.5px;font-weight:700;letter-spacing:1px;padding:7px 14px;border-radius:999px;background:#FDEEEE;border:1px solid #F5CFCF;color:#C74848;margin-bottom:12px">◫ TRUYỆN TRANH · ${N} TRANG</div>`;
+  h+=zvHint();
   for(let i=1;i<=N;i++){ const pg=String(i).padStart(2,'0');
-    h+=`<div style="position:relative;margin-bottom:10px;border-radius:14px;overflow:hidden;border:1px solid #E3E8EE;background:#fff;min-height:120px"><img src="comics/l${n}/p${pg}.jpg" loading="lazy" alt="Trang ${i}" style="width:100%;display:block"><span style="position:absolute;bottom:8px;right:8px;background:rgba(15,25,35,.72);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;font-family:'Space Grotesk'">${i}/${N}</span></div>`; }
+    h+=`<div onclick="zvOpen('cm',${n},${i})" style="position:relative;margin-bottom:10px;border-radius:14px;overflow:hidden;border:1px solid #E3E8EE;background:#fff;min-height:120px;cursor:zoom-in"><img src="comics/l${n}/p${pg}.jpg" loading="lazy" alt="Trang ${i}" style="width:100%;display:block"><span style="position:absolute;bottom:8px;right:8px;background:rgba(15,25,35,.72);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;font-family:'Space Grotesk'">${i}/${N}</span></div>`; }
   h+=practiceCTA('Đọc xong truyện rồi! Vào phòng tập');
   return h;
 }
@@ -947,8 +948,9 @@ function lessonWorkbook(n,step){
       <p style="margin:6px 0 12px;font-size:12.5px;color:#D9D2F0;line-height:1.6;font-weight:600">Đọc ngay bên dưới, hoặc tải PDF để in ra và viết tay. Viết tay giúp bài học "ngấm" sâu hơn — rồi quay lại app nộp bài cho Coach AI.</p>
       <a href="${pdf}" target="_blank" rel="noopener" onclick="sfx('tap');wbEvent(${n})" style="display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:13px;font-size:13.5px;font-weight:800;background:#fff;color:#3B2A6B;min-height:46px">⬇ Tải / In workbook PDF</a>
     </div>`;
+  h+=zvHint();
   for(let i=1;i<=N;i++){ const pg=String(i).padStart(2,'0');
-    h+=`<div style="position:relative;margin-bottom:10px;border-radius:14px;overflow:hidden;border:1px solid #E3E8EE;background:#fff;min-height:120px"><img src="workbook/w${n}/p${pg}.jpg" loading="lazy" alt="Workbook trang ${i}" style="width:100%;display:block"><span style="position:absolute;bottom:8px;right:8px;background:rgba(15,25,35,.72);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;font-family:'Space Grotesk'">${i}/${N}</span></div>`; }
+    h+=`<div onclick="zvOpen('wb',${n},${i})" style="position:relative;margin-bottom:10px;border-radius:14px;overflow:hidden;border:1px solid #E3E8EE;background:#fff;min-height:120px;cursor:zoom-in"><img src="workbook/w${n}/p${pg}.jpg" loading="lazy" alt="Workbook trang ${i}" style="width:100%;display:block"><span style="position:absolute;bottom:8px;right:8px;background:rgba(15,25,35,.72);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;font-family:'Space Grotesk'">${i}/${N}</span><span style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,.92);border:1px solid #E3E8EE;color:#0F1923;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px">🔍 Phóng to</span></div>`; }
   h+=practiceCTA('Làm workbook xong? Vào phòng tập nộp bài');
   return h;
 }
@@ -1053,6 +1055,7 @@ function fixedUI(){
   if(UI.payOpen) h+=modalPay();
   if(UI.treasure) h+=modalTreasure();
   if(UI.certOpen) h+=modalCert();
+  if(UI.zv) h+=modalZoom();
   if(UI.toastMsg) h+=`<div style="position:fixed;left:50%;transform:translateX(-50%);bottom:120px;background:#0F1923;color:#fff;font-weight:700;padding:13px 20px;border-radius:13px;z-index:99;box-shadow:0 12px 34px rgba(15,25,35,.3);font-size:13px;max-width:86%;text-align:center;animation:fade .25s">${esc(UI.toastMsg)}</div>`;
   return h;
 }
@@ -1177,6 +1180,42 @@ function modalCert(){
   </div></div>`;
 }
 
+/* ===== 🔍 TRÌNH XEM PHÓNG TO — workbook & truyện tranh (véo 2 ngón, chạm 2 lần, vuốt đổi trang) ===== */
+function zvHint(){ return `<div style="font-size:11.5px;color:#5C6B7A;font-weight:700;margin:-4px 0 10px">🔍 Chạm vào trang để xem toàn màn hình, véo 2 ngón hoặc chạm 2 lần để phóng to chữ.</div>`; }
+function zvOpen(kind,n,i){ const N=kind==='wb'?(WORKBOOK[n]||0):(COMICS[n]||0); if(!N) return; const urls=[]; for(let k=1;k<=N;k++){ const pg=String(k).padStart(2,'0'); urls.push(kind==='wb'?('workbook/w'+n+'/p'+pg+'.jpg'):('comics/l'+n+'/p'+pg+'.jpg')); }
+  sfx('tap'); UI.zv={urls,i:Math.max(0,Math.min(N-1,(i||1)-1)),label:(kind==='wb'?'📘 Workbook · Bài ':'◫ Truyện tranh · Bài ')+n,s:1,tx:0,ty:0}; _zp.clear(); _zg=null; render(); }
+function zvClose(){ UI.zv=null; _zp.clear(); _zg=null; render(); }
+function zvGo(d){ const z=UI.zv; if(!z) return; const i=z.i+d; if(i<0||i>=z.urls.length) return; z.i=i; z.s=1; z.tx=0; z.ty=0; sfx('pop'); render(); }
+function zvEls(){ return {box:document.getElementById('zvbox'),img:document.getElementById('zvimg')}; }
+function zvApply(){ const z=UI.zv,{img}=zvEls(); if(!z||!img) return; img.style.transform='translate('+z.tx+'px,'+z.ty+'px) scale('+z.s+')'; const l=document.getElementById('zvpct'); if(l) l.textContent=Math.round(z.s*100)+'%'; }
+function zvClamp(){ const z=UI.zv,{box,img}=zvEls(); if(!z||!box||!img) return; const bw=box.clientWidth,bh=box.clientHeight,ox=img.offsetLeft,oy=img.offsetTop,sw=img.offsetWidth*z.s,sh=img.offsetHeight*z.s;
+  if(sw<=bw) z.tx=(bw-sw)/2-ox; else z.tx=Math.min(-ox,Math.max(bw-sw-ox,z.tx));
+  if(sh<=bh) z.ty=(bh-sh)/2-oy; else z.ty=Math.min(-oy,Math.max(bh-sh-oy,z.ty)); }
+function zvSet(s,cx,cy){ const z=UI.zv,{box,img}=zvEls(); if(!z||!box||!img) return; const r=box.getBoundingClientRect(); const px=(cx==null?r.width/2:cx-r.left)-img.offsetLeft, py=(cy==null?r.height/2:cy-r.top)-img.offsetTop; const ns=Math.max(1,Math.min(6,s)), k=ns/z.s; z.tx=px-(px-z.tx)*k; z.ty=py-(py-z.ty)*k; z.s=ns; if(ns===1){ z.tx=0; z.ty=0; } zvClamp(); zvApply(); }
+let _zp=new Map(), _zg=null, _ztap=0;
+function zvDown(e){ const z=UI.zv; if(!z) return; e.preventDefault(); _zp.set(e.pointerId,{x:e.clientX,y:e.clientY}); try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(x){}
+  if(_zp.size===1) _zg={mode:'pan',x0:e.clientX,y0:e.clientY,tx0:z.tx,ty0:z.ty,moved:false};
+  else if(_zp.size===2){ const [a,b]=[..._zp.values()]; _zg={mode:'pinch',d0:Math.max(10,Math.hypot(a.x-b.x,a.y-b.y)),s0:z.s,mx0:(a.x+b.x)/2,my0:(a.y+b.y)/2,tx0:z.tx,ty0:z.ty,moved:true}; } }
+function zvMove(e){ const z=UI.zv; if(!z||!_zg||!_zp.has(e.pointerId)) return; e.preventDefault(); _zp.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(_zg.mode==='pinch'&&_zp.size>=2){ const [a,b]=[..._zp.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y), ns=Math.max(1,Math.min(6,_zg.s0*d/_zg.d0)), mx=(a.x+b.x)/2, my=(a.y+b.y)/2; const {box,img}=zvEls(); if(!box||!img) return; const r=box.getBoundingClientRect(); const px=_zg.mx0-r.left-img.offsetLeft, py=_zg.my0-r.top-img.offsetTop, k=ns/_zg.s0; z.tx=px-(px-_zg.tx0)*k+(mx-_zg.mx0); z.ty=py-(py-_zg.ty0)*k+(my-_zg.my0); z.s=ns; zvClamp(); zvApply(); }
+  else if(_zg.mode==='pan'){ const dx=e.clientX-_zg.x0, dy=e.clientY-_zg.y0; if(Math.abs(dx)+Math.abs(dy)>6) _zg.moved=true; if(z.s>1){ z.tx=_zg.tx0+dx; z.ty=_zg.ty0+dy; zvClamp(); zvApply(); } } }
+function zvUp(e){ const z=UI.zv; if(!z) return; _zp.delete(e.pointerId);
+  if(_zg&&_zg.mode==='pan'&&_zp.size===0){ if(!_zg.moved){ const now=Date.now(); if(now-_ztap<320){ _ztap=0; zvSet(z.s>1.05?1:2.5,e.clientX,e.clientY); } else _ztap=now; }
+    else if(z.s<=1.05){ const dx=e.clientX-_zg.x0; if(Math.abs(dx)>70) zvGo(dx<0?1:-1); } }
+  if(_zp.size===0) _zg=null; else if(_zp.size===1){ const [a]=[..._zp.values()]; _zg={mode:'pan',x0:a.x,y0:a.y,tx0:z.tx,ty0:z.ty,moved:true}; } }
+function zvWheel(e){ const z=UI.zv; if(!z) return; e.preventDefault(); zvSet(z.s*(e.deltaY<0?1.15:1/1.15),e.clientX,e.clientY); }
+function modalZoom(){ const z=UI.zv, N=z.urls.length; const btn='border:none;border-radius:11px;width:42px;height:42px;font-size:20px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;flex:0 0 42px';
+  return `<div style="position:fixed;inset:0;background:#0F1923;z-index:90;display:flex;flex-direction:column;animation:fade .2s">
+    <div style="display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 10px) 12px 10px;color:#fff;flex:0 0 auto;background:rgba(15,25,35,.94)">
+      <div style="flex:1;min-width:0"><div style="font-family:'Space Grotesk';font-size:12.5px;font-weight:700;letter-spacing:1px;color:#0FB89B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(z.label)}</div><div style="font-size:11px;color:#BFEFE4;font-weight:700">Trang ${z.i+1}/${N} · <span id="zvpct">${Math.round(z.s*100)}%</span> · véo 2 ngón hoặc chạm 2 lần</div></div>
+      <button onclick="zvSet(UI.zv.s/1.4)" style="${btn}">−</button><button onclick="zvSet(UI.zv.s*1.4)" style="${btn}">+</button><button onclick="zvClose()" style="${btn};background:rgba(232,91,91,.85)">✕</button></div>
+    <div id="zvbox" onpointerdown="zvDown(event)" onpointermove="zvMove(event)" onpointerup="zvUp(event)" onpointercancel="zvUp(event)" onwheel="zvWheel(event)" style="flex:1;min-height:0;position:relative;overflow:hidden;touch-action:none;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;cursor:grab">
+      <img id="zvimg" src="${z.urls[z.i]}" draggable="false" alt="Trang ${z.i+1}" style="max-width:100%;max-height:100%;display:block;transform-origin:0 0;transform:translate(${z.tx}px,${z.ty}px) scale(${z.s});will-change:transform;background:#fff;box-shadow:0 0 40px rgba(0,0,0,.5)"></div>
+    <div style="display:flex;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom) + 12px);background:rgba(15,25,35,.94);flex:0 0 auto">
+      <button onclick="zvGo(-1)" ${z.i===0?'disabled':''} style="flex:1;border:1px solid rgba(255,255,255,.18);border-radius:13px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;min-height:48px;opacity:${z.i===0?.35:1}">‹ Trang trước</button>
+      <button onclick="zvGo(1)" ${z.i>=N-1?'disabled':''} style="flex:1;border:none;border-radius:13px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px;opacity:${z.i>=N-1?.35:1}">Trang sau ›</button></div>
+  </div>`; }
+
 /* ===== HANDLERS ===== */
 function toggleZone(m){ const cur=(function(){ const nextN=[...Array(30).keys()].find(n=>!isDone(n)); return nextN!=null?LESSONS[nextN].module:3; })(); const o=Object.assign({},UI.openZones||{[cur]:true}); o[m]=!o[m]; UI.openZones=o; render(); }
 function onAns(){ const ta=document.getElementById('ans'); if(!ta||UI.n==null) return; S.ans[UI.n]=ta.value; save(); const m=document.getElementById('savedmsg'); if(m){ m.textContent='Đã lưu vào nhật ký ✓'; clearTimeout(window._sm); window._sm=setTimeout(()=>{ if(m) m.textContent=''; },1400); } }
@@ -1188,6 +1227,7 @@ function clearChat(){ if(confirm('Xóa toàn bộ hội thoại với Coach AI?'
 
 /* ===== BOOT ===== */
 document.addEventListener('pointerdown',function once(){ syncBgm(); }, {once:false});
+document.addEventListener('keydown',e=>{ if(!UI.zv) return; if(e.key==='Escape') zvClose(); else if(e.key==='ArrowRight') zvGo(1); else if(e.key==='ArrowLeft') zvGo(-1); else if(e.key==='+'||e.key==='=') zvSet(UI.zv.s*1.4); else if(e.key==='-') zvSet(UI.zv.s/1.4); });
 async function boot(){
   if(BACKEND){ try{ await initAuth(); }catch(e){ console.warn(e); } }
   if(CODE_MODE && OPEN_MODE){ const g=guestStored(); if(g&&g.email){ try{ const d=await api({action:'guest',name:g.name,email:g.email}); if(d&&d.ok){ MEMBER={code:d.code,name:d.name,role:'guest',session:d.session||'',email:g.email}; try{ localStorage.setItem('eqgym_guest',JSON.stringify({code:d.code,session:d.session,name:d.name,email:g.email})); }catch(e){} if(d.progress) applyProgress(d.progress); } else { try{ localStorage.removeItem('eqgym_guest'); }catch(e){} } }catch(e){} } }
