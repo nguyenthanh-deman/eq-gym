@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="theme-color" content="#F5F8FA">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -83,7 +84,7 @@ function trimForSync(){
   const hist={}; Object.keys(S.history||{}).forEach(k=>{ hist[k]=(S.history[k]||[]).slice(0,8).map(x=>({ts:x.ts,score:x.score,dims:x.dims,by:x.by})); });
   const ans={}; Object.keys(S.ans||{}).forEach(k=>{ if(S.ans[k]) ans[k]=cap(S.ans[k],500); });
   const scores={}; Object.keys(S.scores||{}).forEach(k=>{ const x=S.scores[k]||{}; scores[k]={score:x.score,dims:x.dims,by:x.by,feedback:cap(x.feedback,220),tip:cap(x.tip,160)}; });
-  let out={done:S.done,graded:S.graded,streak:S.streak,last:S.last,bounty:S.bounty,practices:S.practices,quiz:S.quiz,qans:S.qans,scen:S.scen,scores:scores,ans:ans,history:hist};
+  let out={done:S.done,graded:S.graded,streak:S.streak,last:S.last,bounty:S.bounty,practices:S.practices,quiz:S.quiz,qans:S.qans,scen:S.scen,scores:scores,ans:ans,history:hist,cert:S.cert||null};
   try{ if(JSON.stringify(out).length>45000){ out.ans={}; } if(JSON.stringify(out).length>45000){ out.history={}; } }catch(e){}
   return out;
 }
@@ -99,7 +100,7 @@ function applyProgress(p){ try{ p=p||{}; const L=S, m=Object.assign(dflt(),p);
   m.done=[...new Set([...(p.done||[]),...(L.done||[])])];
   m.bounty=Math.max(p.bounty||0,L.bounty||0); m.streak=Math.max(p.streak||0,L.streak||0); m.practices=Math.max(p.practices||0,L.practices||0); m.last=p.last||L.last;
   ['ans','scores','graded','scen','qans'].forEach(k=>{ m[k]=Object.assign({},p[k]||{},L[k]||{}); });
-  m.history=Object.assign({},p.history||{},L.history||{}); m.chat=(L.chat&&L.chat.length)?L.chat:(p.chat||[]); m.quiz=p.quiz||L.quiz;
+  m.history=Object.assign({},p.history||{},L.history||{}); m.chat=(L.chat&&L.chat.length)?L.chat:(p.chat||[]); m.quiz=p.quiz||L.quiz; m.cert=p.cert||L.cert||null;
   S=m; try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ _mem=S; }
 }catch(e){} }
 async function doLogin(){
@@ -156,7 +157,7 @@ function adminTabTo(t){ UI.adminTab=t; render(); if(t==='activity') loadActivity
 async function loadActivity(){ try{ const d=await api({action:'activity',admin:MEMBER.code}); if(d&&d.ok){ UI.activity=d.items; render(); } }catch(e){} }
 async function adminSetStatus(code,status){ try{ const d=await api({action:'setStatus',admin:MEMBER.code,code,status}); if(d&&d.ok){ toast(status==='blocked'?'Đã khoá':'Đã mở khoá'); loadMembers(); } else toast((d&&d.error)||'Lỗi'); }catch(e){ toast('Lỗi'); } }
 async function adminDelete(code,name){ if(!confirm('Xoá tài khoản "'+name+'" ('+code+')? Không thể hoàn tác.')) return; try{ const d=await api({action:'deleteMember',admin:MEMBER.code,code}); if(d&&d.ok){ toast('Đã xoá '+code); loadMembers(); } else toast((d&&d.error)||'Lỗi'); }catch(e){ toast('Lỗi'); } }
-function evLabel(e){ return ({login:'🔓 Đăng nhập',register:'📝 Đăng ký',['code-issued']:'🔑 Cấp mã',blocked:'⛔ Khoá',unblocked:'✅ Mở khoá',deleted:'🗑️ Xoá',['reset-points']:'♻️ Reset điểm',['done-lesson']:'🎓 Xong buổi'})[e]||e; }
+function evLabel(e){ return ({login:'🔓 Đăng nhập',register:'📝 Đăng ký',['code-issued']:'🔑 Cấp mã',blocked:'⛔ Khoá',unblocked:'✅ Mở khoá',deleted:'🗑️ Xoá',['reset-points']:'♻️ Reset điểm',['done-lesson']:'✅ Xong buổi',['open-workbook']:'📘 Mở workbook',certificate:'🎓 Chứng nhận'})[e]||e; }
 async function adminCreate(){ const name=(val('newname')||'').trim(); if(!name){ toast('Nhập tên khách'); return; } UI.adminBusy=true; render(); try{ const d=await api({action:'createCode',admin:MEMBER.code,name}); if(d&&d.ok){ UI.newCode=d; UI.adminBusy=false; loadMembers(); render(); toast('Đã tạo mã cho '+d.name); } else { UI.adminBusy=false; toast((d&&d.error)||'Lỗi'); render(); } }catch(e){ UI.adminBusy=false; toast('Lỗi kết nối'); render(); } }
 async function loadMembers(){ try{ const d=await api({action:'listMembers',admin:MEMBER.code}); if(d&&d.ok){ UI.members=d.members; render(); } }catch(e){} }
 function copyCode(c){ try{ navigator.clipboard.writeText(c); toast('Đã copy mã '+c); }catch(e){} }
@@ -289,6 +290,10 @@ const SEAS={
 const RANKS=[[0,'Người Mới Nhập Môn'],[3,'Hội Viên Đồng'],[7,'Hội Viên Bạc'],[12,'Hội Viên Vàng'],[18,'Vận Động Viên EQ'],[24,'Coach Tập Sự'],[30,'Bậc Thầy EQ']];
 const B_LESSON=10000000, B_PRACTICE=5000000, B_SCORE=100000;
 const COMICS={0:15,1:15,2:15,3:12,4:15,5:15,6:15,7:15,8:15,9:15,10:15,11:15,12:15,13:15,14:15,15:15,16:15,17:15,18:15,19:15,20:15,21:15,22:15,23:15,24:15,25:15,26:15,27:15,28:15,29:15};
+/* 📘 WORKBOOK: số trang mỗi bài (workbook/wN/pNN.jpg + workbook/bai-N.pdf) — sinh bởi scratchpad/wb_build.py */
+const WORKBOOK=/*WORKBOOK_MAP*/{0:4,1:5,2:7,3:5,4:4,5:5,6:4,7:5,8:4,9:4,10:5,11:7,12:7,13:5,14:5,15:6,16:7,17:6,18:7,19:6,20:5,21:5,22:8,23:6,24:8,25:8,26:7,27:7,28:8,29:7};
+/* 🎓 CHỨNG NHẬN: người ký */
+const CERT_SIGNER={name:'Hana Đoàn Thị Hải Loan',title:'EQ Insight Certified Facilitator · Six Seconds Network Leader'};
 const TRACKS=[
   {f:'music/omma-flow.mp3',name:'OMMA Flow'},
   {f:'music/omma-flow-1.mp3',name:'OMMA Flow 1'},
@@ -328,9 +333,9 @@ function load(){
   try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s) return Object.assign(dflt(),s); }catch(e){}
   return dflt();
 }
-function dflt(){ return {done:[],ans:{},scores:{},graded:{},streak:0,last:null,bounty:0,scen:{},history:{},chat:[],practices:0,quiz:null,qans:{}}; }
+function dflt(){ return {done:[],ans:{},scores:{},graded:{},streak:0,last:null,bounty:0,scen:{},history:{},chat:[],practices:0,quiz:null,qans:{},cert:null}; }
 let S=load();
-let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:''};
+let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:'',certOpen:false,certImg:null};
 let snd; try{ snd=Object.assign({bgm:true,sfx:true,track:0,vol:0.5}, JSON.parse(localStorage.getItem('eqgym_sound_v1'))||{}); }catch(e){ snd={bgm:true,sfx:true,track:0,vol:0.5}; }
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ _mem=S; } scheduleSync(); syncPoints(); }
 function saveSnd(){ try{ localStorage.setItem('eqgym_sound_v1',JSON.stringify(snd)); }catch(e){} }
@@ -396,6 +401,7 @@ function buildSteps(n){
   const isHead=it=> it.k==='h' || (it.t && it.t.length<64 && it.t===it.t.toUpperCase() && /[A-ZÀ-Ỹ]/.test(it.t));
   l.sections.forEach(sec=>{ if(sec.practice) return; let page=[]; const flush=()=>{ if(page.length){ steps.push({kind:'content',h:sec.h,items:page}); page=[]; } };
     sec.items.forEach(it=>{ if(isHead(it)&&page.length) flush(); page.push({t:(it.t||'').replace(/=>/g,'→'), isHead:isHead(it), isFlow:!isHead(it)&&/→|⇒/.test(it.t||'')}); if(page.length>=STEP_LINES) flush(); }); flush(); });
+  if(WORKBOOK[n]) steps.push({kind:'workbook', pages:WORKBOOK[n]});
   const ps=l.sections.find(s=>s.practice);
   if(ps) steps.push({kind:'practice', items:ps.items.map(it=>({t:it.t}))});
   else if(REFLECT_PROMPTS[n]!=null) steps.push({kind:'practice', items:[{t:REFLECT_PROMPTS[n]}], reflect:true});
@@ -458,13 +464,13 @@ function complete(n){
   const d=S.done.length, r=rankOf(d), pr=rankOf(d-1);
   const mdone=m=>LESSONS.filter(l=>l.module===m).every(l=>isDone(l.n));
   let title='BUỔI TẬP HOÀN THÀNH!', msg='Buổi '+n+' · '+LESSONS[n].title, rc='#0FB89B';
-  if(d>=30){ title='BẬC THẦY EQ!'; msg='Bạn đã hoàn thành trọn vẹn lộ trình 30 buổi. Thành quả lớn nhất chính là con người mới của bạn.'; rc='#E0930A'; }
+  if(d>=30){ title='BẬC THẦY EQ!'; msg='Bạn đã hoàn thành trọn vẹn 30 buổi của hành trình EQ GYM. Thành quả lớn nhất là con người mới của bạn — và giấy chứng nhận hoàn thành đã sẵn sàng!'; rc='#E0930A'; if(!S.cert){ S.cert=makeCert(); save(); certEvent(); } }
   else if(r[1]!==pr[1]){ title='THĂNG HẠNG: '+r[1]+'!'; rc='#E0930A'; }
   else if((n===12&&mdone(1))||(n===20&&mdone(2))||(n===29&&mdone(3))){ title='HUY CHƯƠNG MỚI!'; rc='#4A9EFF'; }
-  UI.treasure={title,msg,rc,earn:'+'+fmt(B_LESSON)+' EP',btn:n<29?'Sang buổi tập tiếp theo ›':'Về lộ trình',next:n<29?n+1:null};
+  UI.treasure={title,msg,rc,earn:'+'+fmt(B_LESSON)+' EP',btn:n<29?'Sang buổi tập tiếp theo ›':(d>=30?'🎓 Nhận giấy chứng nhận':'Về lộ trình'),next:n<29?n+1:null,cert:d>=30};
   render();
 }
-function closeTreasure(){ const t=UI.treasure; UI.treasure=null; if(t&&t.next!=null&&AUTO_NEXT) openLesson(t.next); else goHome(); }
+function closeTreasure(){ const t=UI.treasure; UI.treasure=null; if(t&&t.cert&&S.cert){ goHome(); openCert(); return; } if(t&&t.next!=null&&AUTO_NEXT) openLesson(t.next); else goHome(); }
 function confettiRain(){ const c=document.createElement('div'); c.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:95'; document.body.appendChild(c); const cs=['#0FB89B','#E85B5B','#E0930A','#4A9EFF']; for(let i=0;i<44;i++){ const d=document.createElement('div'); const sz=6+Math.random()*8; d.style.cssText='position:absolute;left:'+(Math.random()*100)+'%;top:-20px;width:'+sz+'px;height:'+sz+'px;border-radius:'+(Math.random()>.5?'50%':'2px')+';background:'+cs[i%4]; c.appendChild(d); if(d.animate) d.animate([{transform:'translateY(0) rotate(0)',opacity:1},{transform:'translateY('+(window.innerHeight+60)+'px) rotate('+(360*Math.random())+'deg)',opacity:.85}],{duration:1400+Math.random()*1400,easing:'cubic-bezier(.2,.6,.4,1)'}); } setTimeout(()=>c.remove(),3000); }
 function resetAll(){ if(confirm('Đặt lại toàn bộ lộ trình, điểm EP và nhật ký? Không thể hoàn tác.')){ const q=S.quiz,qa=S.qans; S=dflt(); S.quiz=q; S.qans=qa; save(); UI.view='home'; render(); toast('Lộ trình mới bắt đầu — tập đều mỗi ngày nhé!'); } }
 
@@ -783,6 +789,7 @@ function soundIcon(){ return snd?(snd.bgm?'♪':(snd.sfx?'♫':'⊘')):'♪'; }
 
 function viewHome(){
   const d=S.done.length, r=rankOf(d), nr=nextRank(d), prev=r[0], hi=nr?nr[0]:30;
+  if(d>=30&&!S.cert){ S.cert=makeCert(); save(); certEvent(); }
   const nextN=[...Array(30).keys()].find(n=>!isDone(n));
   const sc=Object.values(S.scores).map(x=>x.score);
   const mdone=m=>LESSONS.filter(l=>l.module===m).every(l=>isDone(l.n));
@@ -815,8 +822,9 @@ function viewHome(){
     ${[[d+'/30','Buổi hoàn thành'],[String(S.streak),'Ngày tập liên tục'],[sc.length?String(Math.round(sc.reduce((a,b)=>a+b,0)/sc.length)):'—','Điểm TB AI']].map(s=>`<div style="flex:1;background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:12px 6px;text-align:center"><b style="display:block;font-family:'Space Grotesk';font-size:17px;color:#0A6E5D">${s[0]}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">${s[1]}</span></div>`).join('')}
   </div>
   <div style="display:flex;gap:9px;margin:11px 16px 0">
-    ${badges.map(b=>`<div style="flex:1;background:#fff;border-radius:15px;padding:11px 4px;text-align:center;opacity:${b[2]?1:.6};border:1px solid ${b[2]?b[1]:'#E3E8EE'}"><svg width="26" height="26" viewBox="0 0 100 100" style="display:block;margin:0 auto"><circle cx="50" cy="50" r="34" fill="none" stroke="${b[2]?b[1]:'#C7D0D9'}" stroke-width="13"/><circle cx="50" cy="50" r="9" fill="${b[2]?'#E85B5B':'#C7D0D9'}"/></svg><span style="font-size:9px;color:${b[2]?'#0F1923':'#8A97A5'};display:block;margin-top:5px;line-height:1.3;font-weight:800">${b[0]}</span></div>`).join('')}
+    ${badges.map(b=>`<div onclick="${(b[0]==='Bậc Thầy EQ'&&S.cert)?'openCert()':''}" style="flex:1;background:#fff;border-radius:15px;padding:11px 4px;text-align:center;opacity:${b[2]?1:.6};border:1px solid ${b[2]?b[1]:'#E3E8EE'};cursor:${(b[0]==='Bậc Thầy EQ'&&S.cert)?'pointer':'default'}"><svg width="26" height="26" viewBox="0 0 100 100" style="display:block;margin:0 auto"><circle cx="50" cy="50" r="34" fill="none" stroke="${b[2]?b[1]:'#C7D0D9'}" stroke-width="13"/><circle cx="50" cy="50" r="9" fill="${b[2]?'#E85B5B':'#C7D0D9'}"/></svg><span style="font-size:9px;color:${b[2]?'#0F1923':'#8A97A5'};display:block;margin-top:5px;line-height:1.3;font-weight:800">${b[0]}</span></div>`).join('')}
   </div>`;
+  h+=certCardHome();
   h+=eqProfileHome();
   // accordion
   const groups={0:[],1:[],2:[],3:[]}; LESSONS.forEach(l=>groups[l.module].push(l));
@@ -833,7 +841,7 @@ function viewHome(){
       items.forEach(l=>{ const done=isDone(l.n), lock=!unlocked(l.n), now=l.n===nextN; const v=hasVideo(l.n); const scr=S.scores[l.n];
         h+=`<div onclick="openLesson(${l.n})" style="display:flex;gap:12px;align-items:center;background:#fff;border-radius:15px;padding:9px 12px;min-height:56px;cursor:pointer;position:relative;z-index:2;border:1px solid ${now?'#E85B5B55':'#E3E8EE'};opacity:${lock?.55:1};animation:${now?'pulse 1.8s infinite':'none'}">
           <div style="width:44px;height:44px;flex:0 0 44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${done?'#0FB89B':'#fff'};border:3px solid ${now?'#E85B5B':(done?'#0FB89B':(lock?'#E3E8EE':M.color))};position:relative"><span style="font-family:'Space Grotesk';font-size:14px;font-weight:700;color:${done?'#fff':(lock?'#B4BFC9':'#0F1923')}">${done?'✓':String(l.n)}</span>${now?'<span style="position:absolute;width:10px;height:10px;border-radius:50%;background:#E85B5B;bottom:-2px;right:-2px;border:2px solid #fff"></span>':''}</div>
-          <div style="flex:1;min-width:0"><b style="font-size:12.5px;display:block;line-height:1.35;color:#0F1923">${esc(l.title)}</b><span style="font-size:10.5px;color:#5C6B7A;display:flex;align-items:center;gap:7px;margin-top:3px;flex-wrap:wrap;font-weight:600">${v?'<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:#FDEEEE;color:#C74848;border:1px solid #F5CFCF;white-space:nowrap;font-weight:800">▶ VIDEO</span>':''}${COMICS[l.n]?'<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:#FFF7EC;color:#B27607;border:1px solid #F2D9A8;white-space:nowrap;font-weight:800">◫ TRUYỆN</span>':''}<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:#EAF3FE;color:#2F6FBF;border:1px solid #CCE1F8;white-space:nowrap;font-weight:800">✍ THỰC HÀNH</span>${scr?'<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:#FFF7EC;color:#B27607;border:1px solid #F2D9A8;white-space:nowrap;font-weight:800">★ '+scr.score+'</span>':''}<span style="white-space:nowrap">${esc(l.duration||'5–7 phút')}</span></span></div>
+          <div style="flex:1;min-width:0"><b style="font-size:12.5px;display:block;line-height:1.35;color:#0F1923">${esc(l.title)}</b><span style="font-size:10.5px;color:#5C6B7A;display:flex;align-items:center;gap:7px;margin-top:3px;flex-wrap:wrap;font-weight:600">${v?'<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:#FDEEEE;color:#C74848;border:1px solid #F5CFCF;white-space:nowrap;font-weight:800">▶ VIDEO</span>':''}${COMICS[l.n]?'<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:#FFF7EC;color:#B27607;border:1px solid #F2D9A8;white-space:nowrap;font-weight:800">◫ TRUYỆN</span>':''}${WORKBOOK[l.n]?'<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:#F3EEFF;color:#6B46C1;border:1px solid #DDD2F5;white-space:nowrap;font-weight:800">📘 WORKBOOK</span>':''}<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:#EAF3FE;color:#2F6FBF;border:1px solid #CCE1F8;white-space:nowrap;font-weight:800">✍ THỰC HÀNH</span>${scr?'<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:#FFF7EC;color:#B27607;border:1px solid #F2D9A8;white-space:nowrap;font-weight:800">★ '+scr.score+'</span>':''}<span style="white-space:nowrap">${esc(l.duration||'5–7 phút')}</span></span></div>
           <span style="font-size:13px;flex:0 0 auto;color:${done?'#0FB89B':(lock?'#B4BFC9':'#5C6B7A')};font-weight:800">${done?'✓':(lock?'🔒':'›')}</span></div>`; });
       h+=`</div>`; }
     h+=`</div>`;
@@ -863,6 +871,7 @@ function viewLesson(){
     <div style="padding:18px 18px 26px;animation:fade .22s ease">`;
   if(step.kind==='intro') h+=lessonIntro(n,l,M);
   else if(step.kind==='comic') h+=lessonComic(n,step);
+  else if(step.kind==='workbook') h+=lessonWorkbook(n,step);
   else if(step.kind==='content') h+=lessonContent(step,M);
   else if(step.kind==='practice') h+=lessonPractice(n,step);
   else if(step.kind==='finish') h+=lessonFinish(n,done);
@@ -884,9 +893,10 @@ function lessonIntro(n,l,M){
       <button onclick="scrollToVid()" style="flex:1;background:#EAFBF6;border:1px solid #B6EDDF;border-radius:12px;padding:12px 6px;cursor:pointer;color:#0A6E5D;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-weight:800"><span style="font-size:19px">▶</span><span style="font-size:11px">Xem video</span></button>
       ${COMICS[n]?`<button onclick="jumpStep(stepIdx('comic'))" style="flex:1;background:#FDEEEE;border:1px solid #F5CFCF;border-radius:12px;padding:12px 6px;cursor:pointer;color:#C74848;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-weight:800"><span style="font-size:19px">◫</span><span style="font-size:11px">Truyện tranh</span></button>`:''}
       <button onclick="jumpStep(stepIdx('content'))" style="flex:1;background:#EAF3FE;border:1px solid #CCE1F8;border-radius:12px;padding:12px 6px;cursor:pointer;color:#2F6FBF;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-weight:800"><span style="font-size:19px">≡</span><span style="font-size:11px">Bài đọc</span></button>
+      ${WORKBOOK[n]?`<button onclick="jumpStep(stepIdx('workbook'))" style="flex:1;background:#F3EEFF;border:1px solid #DDD2F5;border-radius:12px;padding:12px 6px;cursor:pointer;color:#6B46C1;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-weight:800"><span style="font-size:19px">📘</span><span style="font-size:11px">Workbook</span></button>`:''}
     </div></div>`;
   const vv=videoFor(n);
-  if(vv.type==='yt') h+=`<div id="introvid" style="margin:16px 0 0;border-radius:16px;overflow:hidden;border:1px solid #E3E8EE;background:#000"><iframe src="https://www.youtube-nocookie.com/embed/${vv.id}" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy" style="width:100%;aspect-ratio:16/9;display:block;border:0;background:#000"></iframe></div>`;
+  if(vv.type==='yt') h+=`<div id="introvid" style="margin:16px 0 0;border-radius:16px;overflow:hidden;border:1px solid #E3E8EE;background:#000"><iframe src="https://www.youtube-nocookie.com/embed/${vv.id}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy" style="width:100%;aspect-ratio:16/9;display:block;border:0;background:#000"></iframe></div><a href="https://youtu.be/${vv.id}" target="_blank" rel="noopener" style="display:block;text-align:right;margin:6px 2px 0;font-size:11.5px;font-weight:700;color:#5C6B7A">Video không phát được? Mở trên YouTube ↗</a>`;
   else if(vv.type==='gd') h+=`<div id="introvid" style="margin:16px 0 0;border-radius:16px;overflow:hidden;border:1px solid #E3E8EE;background:#000"><iframe src="https://drive.google.com/file/d/${vv.id}/preview" allow="autoplay;fullscreen" allowfullscreen loading="lazy" style="width:100%;aspect-ratio:16/9;display:block;border:0;background:#000"></iframe></div>`;
   else if(vv.type==='mp4') h+=`<div id="introvid" style="margin:16px 0 0;border-radius:16px;overflow:hidden;border:1px solid #E3E8EE;background:#000"><video controls preload="metadata" playsinline src="${esc(vv.src)}" style="width:100%;aspect-ratio:16/9;display:block;background:#000"></video></div>`;
   else h+=`<div id="introvid" style="margin:16px 0 0;border-radius:16px;border:1px solid #E3E8EE;aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:linear-gradient(150deg,#0F1923,#123A34);color:#7FA39B"><svg width="40" height="40" viewBox="0 0 100 100"><circle cx="50" cy="50" r="34" fill="none" stroke="#0FB89B" stroke-width="10"/><path d="M42 35 L64 50 L42 65 Z" fill="#fff"/></svg><b style="color:#fff;font-size:13.5px">Video bài học đang cập nhật</b><span style="font-size:11.5px">Đọc nội dung theo từng bước bên dưới nhé!</span></div>`;
@@ -925,6 +935,21 @@ function lessonComic(n,step){
   for(let i=1;i<=N;i++){ const pg=String(i).padStart(2,'0');
     h+=`<div style="position:relative;margin-bottom:10px;border-radius:14px;overflow:hidden;border:1px solid #E3E8EE;background:#fff;min-height:120px"><img src="comics/l${n}/p${pg}.jpg" loading="lazy" alt="Trang ${i}" style="width:100%;display:block"><span style="position:absolute;bottom:8px;right:8px;background:rgba(15,25,35,.72);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;font-family:'Space Grotesk'">${i}/${N}</span></div>`; }
   h+=practiceCTA('Đọc xong truyện rồi! Vào phòng tập');
+  return h;
+}
+function wbEvent(n){ if(!(CODE_MODE&&MEMBER)) return; if(MEMBER.role!=='member'&&MEMBER.role!=='guest') return; try{ api({action:'event',code:MEMBER.code,event:'open-workbook',detail:'Bài '+n+' — '+LESSONS[n].title}); }catch(e){} }
+function lessonWorkbook(n,step){
+  const N=step.pages||WORKBOOK[n]||0, pdf='workbook/bai-'+n+'.pdf';
+  let h=`<div style="display:inline-flex;align-items:center;gap:8px;font-family:'Space Grotesk';font-size:11.5px;font-weight:700;letter-spacing:1px;padding:7px 14px;border-radius:999px;background:#F3EEFF;border:1px solid #DDD2F5;color:#6B46C1;margin-bottom:12px">📘 WORKBOOK · ${N} TRANG</div>
+    <div style="background:linear-gradient(150deg,#0F1923,#3B2A6B 140%);border-radius:16px;padding:14px 15px;color:#fff;margin-bottom:12px">
+      <div style="font-family:'Space Grotesk';font-size:10.5px;font-weight:700;letter-spacing:2px;color:#C4B5FD">SỔ TAY LUYỆN TẬP · BÀI ${n}</div>
+      <b style="display:block;font-size:14.5px;margin-top:3px;line-height:1.35">${esc(LESSONS[n].title)}</b>
+      <p style="margin:6px 0 12px;font-size:12.5px;color:#D9D2F0;line-height:1.6;font-weight:600">Đọc ngay bên dưới, hoặc tải PDF để in ra và viết tay. Viết tay giúp bài học "ngấm" sâu hơn — rồi quay lại app nộp bài cho Coach AI.</p>
+      <a href="${pdf}" target="_blank" rel="noopener" onclick="sfx('tap');wbEvent(${n})" style="display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:13px;font-size:13.5px;font-weight:800;background:#fff;color:#3B2A6B;min-height:46px">⬇ Tải / In workbook PDF</a>
+    </div>`;
+  for(let i=1;i<=N;i++){ const pg=String(i).padStart(2,'0');
+    h+=`<div style="position:relative;margin-bottom:10px;border-radius:14px;overflow:hidden;border:1px solid #E3E8EE;background:#fff;min-height:120px"><img src="workbook/w${n}/p${pg}.jpg" loading="lazy" alt="Workbook trang ${i}" style="width:100%;display:block"><span style="position:absolute;bottom:8px;right:8px;background:rgba(15,25,35,.72);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;font-family:'Space Grotesk'">${i}/${N}</span></div>`; }
+  h+=practiceCTA('Làm workbook xong? Vào phòng tập nộp bài');
   return h;
 }
 function lessonContent(step,M){
@@ -1027,6 +1052,7 @@ function fixedUI(){
   if(UI.premOpen) h+=modalPremium();
   if(UI.payOpen) h+=modalPay();
   if(UI.treasure) h+=modalTreasure();
+  if(UI.certOpen) h+=modalCert();
   if(UI.toastMsg) h+=`<div style="position:fixed;left:50%;transform:translateX(-50%);bottom:120px;background:#0F1923;color:#fff;font-weight:700;padding:13px 20px;border-radius:13px;z-index:99;box-shadow:0 12px 34px rgba(15,25,35,.3);font-size:13px;max-width:86%;text-align:center;animation:fade .25s">${esc(UI.toastMsg)}</div>`;
   return h;
 }
@@ -1041,6 +1067,7 @@ function sheetSettings(){
         <div style="font-size:12.5px;color:#BFEFE4;font-weight:700;margin-top:2px">${esc(m.email||'')} · <span style="color:#fff">${fmt(S.bounty)} EP</span></div>
       </div>
       <p style="color:#5C6B7A;font-size:12px;line-height:1.65;margin:12px 2px 0;font-weight:600">✨ Coach AI đã bật sẵn. Tiến độ học tự lưu theo email của bạn — vào lại bằng email này là học tiếp được. Đua điểm ở tab 🏆 Thi đua nhé!</p>
+      ${S.cert?certBtnHtml():''}
       <button onclick="guestLogout()" style="width:100%;margin-top:14px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:46px">Đổi email / Thoát</button>`);
   }
   if(CODE_MODE){
@@ -1053,6 +1080,7 @@ function sheetSettings(){
       </div>
       <p style="color:#5C6B7A;font-size:12px;line-height:1.6;margin:12px 2px 0;font-weight:600">✨ Coach AI đã bật sẵn (dùng chung của EQ GYM) — bạn chỉ việc luyện tập, không cần cấu hình gì thêm.</p>`;
     if(m.role==='admin') h+=`<button onclick="openAdminCode()" style="width:100%;margin-top:14px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0F1923,#0A6E5D);color:#fff;min-height:48px">🛡️ Cấp mã học viên</button>`;
+    if(S.cert) h+=certBtnHtml();
     h+=`<button onclick="logoutMember()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:46px">Đăng xuất</button>`;
     return sheet(h);
   }
@@ -1075,6 +1103,78 @@ function sheetMusic(){
 function modalTreasure(){
   const t=UI.treasure;
   return `<div style="position:fixed;inset:0;background:rgba(15,25,35,.55);backdrop-filter:blur(6px);z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;animation:fade .3s"><div style="background:#fff;border-radius:24px;padding:30px 24px;text-align:center;max-width:340px;width:100%;animation:pop .45s ease">${ring(80,t.rc)}<h2 style="color:#0F1923;margin:12px 0 4px;font-family:'Space Grotesk';font-size:20px;font-weight:700">${esc(t.title)}</h2><p style="color:#5C6B7A;margin:3px 0;font-size:14px;line-height:1.6;font-weight:600">${esc(t.msg)}</p><div style="font-family:'Space Grotesk';font-size:18px;font-weight:700;color:#0A6E5D;margin-top:10px">${esc(t.earn)}</div><button onclick="closeTreasure()" style="width:100%;margin-top:20px;border:none;border-radius:15px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:52px">${esc(t.btn)}</button></div></div>`;
+}
+
+/* ===== 🎓 GIẤY CHỨNG NHẬN HOÀN THÀNH (tự tạo khi xong 30/30 buổi) ===== */
+function certId(){ const s=String((MEMBER&&MEMBER.code)||'LOCAL').replace(/[^A-Z0-9]/gi,'').toUpperCase(); const t=Date.now().toString(36).toUpperCase(); return 'EQG-'+new Date().getFullYear()+'-'+(s.slice(-4)||'XXXX')+'-'+t.slice(-5); }
+function makeCert(){ const sc=Object.values(S.scores||{}).map(x=>x&&x.score).filter(x=>typeof x==='number'); const avg=sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):null; return {id:certId(),name:((MEMBER&&MEMBER.name)||'').trim(),ts:Date.now(),ep:S.bounty||0,avg,streak:S.streak||0,practices:S.practices||0}; }
+function certEvent(){ if(!(CODE_MODE&&MEMBER&&S.cert)) return; if(MEMBER.role!=='member'&&MEMBER.role!=='guest') return; try{ api({action:'event',code:MEMBER.code,event:'certificate',detail:S.cert.id+' · '+(S.cert.name||'(chưa nhập tên)')}); }catch(e){} }
+function openCert(){ if(!S.cert) return; sfx('success'); UI.settingsOpen=false; UI.certOpen=true; UI.certImg=null; render(); renderCert(); }
+function closeCert(){ UI.certOpen=false; render(); }
+function certFile(){ return 'EQ-GYM-Chung-nhan-'+(S.cert?S.cert.id:'')+'.png'; }
+function certDate(c){ const d=new Date(c.ts||Date.now()); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+function saveCertName(){ const v=(val('certname')||'').trim(); if(!v){ toast('Nhập họ tên để in trên chứng nhận'); return; } S.cert.name=v; save(); UI.certImg=null; render(); renderCert(); toast('Đã cập nhật tên trên chứng nhận'); }
+function rr(x,X,Y,w,h,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
+function spaced(x,text,X,Y,sp,align){ const chars=[...text]; let w=0; chars.forEach(ch=>w+=x.measureText(ch).width); w+=sp*(chars.length-1); let cx=align==='center'?X-w/2:(align==='right'?X-w:X); const ta=x.textAlign; x.textAlign='left'; chars.forEach(ch=>{ x.fillText(ch,cx,Y); cx+=x.measureText(ch).width+sp; }); x.textAlign=ta; }
+function drawLogo(x,px,py,size){ const k=size/100; x.save(); x.translate(px,py); x.scale(k,k); x.fillStyle='#0F1923'; [[10,18,9,64],[10,18,32,9],[10,45,26,9],[10,73,32,9]].forEach(r=>{ rr(x,r[0],r[1],r[2],r[3],4.5); x.fill(); }); x.strokeStyle='#0FB89B'; x.lineWidth=9; x.beginPath(); x.arc(70,50,22,0,Math.PI*2); x.stroke(); x.fillStyle='#E85B5B'; x.beginPath(); x.arc(70,50,5,0,Math.PI*2); x.fill(); x.save(); x.translate(78,64); x.rotate(Math.PI/4); x.fillStyle='#0FB89B'; rr(x,0,0,19,7,3.5); x.fill(); x.restore(); x.restore(); }
+function drawSeal(x,cx,cy,r){ x.save(); x.translate(cx,cy); for(let i=0;i<28;i++){ const a=i/28*Math.PI*2; x.fillStyle='#E0930A'; x.beginPath(); x.arc(Math.cos(a)*(r-6),Math.sin(a)*(r-6),9,0,Math.PI*2); x.fill(); } const g=x.createRadialGradient(-r*.3,-r*.3,r*.1,0,0,r); g.addColorStop(0,'#F6B93B'); g.addColorStop(1,'#C47A00'); x.fillStyle=g; x.beginPath(); x.arc(0,0,r-4,0,Math.PI*2); x.fill(); x.strokeStyle='rgba(255,255,255,.75)'; x.lineWidth=2; x.beginPath(); x.arc(0,0,r-16,0,Math.PI*2); x.stroke(); x.fillStyle='#fff'; x.textAlign='center'; x.font='700 34px "Space Grotesk",sans-serif'; x.fillText('30',0,4); x.font='800 11px "Nunito",sans-serif'; spaced(x,'NGÀY EQ',0,24,2,'center'); x.restore(); }
+async function renderCert(){
+  const c=S.cert; if(!c) return;
+  try{ await Promise.all(['700 80px "Space Grotesk"','700 30px "Space Grotesk"','600 26px "Nunito"','700 26px "Nunito"','800 16px "Nunito"'].map(f=>document.fonts.load(f))); }catch(e){}
+  const W=1600,H=1131, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  const SG='"Space Grotesk",sans-serif', NU='"Nunito",sans-serif';
+  x.fillStyle='#FBF8F1'; x.fillRect(0,0,W,H);
+  x.fillStyle='rgba(15,25,35,.055)'; for(let i=30;i<W;i+=26) for(let j=30;j<H;j+=26){ x.beginPath(); x.arc(i,j,1.3,0,Math.PI*2); x.fill(); }
+  const g=x.createLinearGradient(0,0,W,0); g.addColorStop(0,'#0FB89B'); g.addColorStop(1,'#0A6E5D'); x.fillStyle=g; x.fillRect(0,0,W,16); x.fillRect(0,H-16,W,16);
+  x.strokeStyle='#0F1923'; x.lineWidth=6; x.strokeRect(46,46,W-92,H-92);
+  x.strokeStyle='#0FB89B'; x.lineWidth=2; x.strokeRect(64,64,W-128,H-128);
+  [[64,64,1],[W-64,64,-1]].forEach(k=>{ x.fillStyle='#E85B5B'; x.beginPath(); x.arc(k[0],k[1],7,0,Math.PI*2); x.fill(); x.beginPath(); x.arc(k[0],H-64,7,0,Math.PI*2); x.fill(); });
+  drawLogo(x,100,90,92); x.textBaseline='alphabetic';
+  x.textAlign='left'; x.fillStyle='#0F1923'; x.font='700 44px '+SG; x.fillText('EQ',206,140); x.fillStyle='#0FB89B'; x.fillText('GYM',206+x.measureText('EQ ').width,140);
+  x.fillStyle='#5C6B7A'; x.font='800 14px '+NU; spaced(x,'PHÒNG TẬP CẢM XÚC · HÀNH TRÌNH 30 NGÀY',206,168,3,'left');
+  x.textAlign='right'; x.fillStyle='#8A97A5'; x.font='700 15px '+SG; x.fillText('MÃ CHỨNG NHẬN · '+c.id,W-100,132);
+  x.textAlign='center'; x.fillStyle='#0F1923'; x.font='700 66px '+SG; x.fillText('GIẤY CHỨNG NHẬN',W/2,296);
+  x.fillStyle='#0A6E5D'; x.font='800 17px '+NU; spaced(x,'CERTIFICATE OF COMPLETION',W/2,334,7,'center');
+  x.fillStyle='#5C6B7A'; x.font='600 24px '+NU; x.fillText('Trân trọng chứng nhận',W/2,412);
+  const name=(c.name||'HỌC VIÊN EQ GYM').toUpperCase(); let fs=78; x.font='700 '+fs+'px '+SG; while(x.measureText(name).width>W-320&&fs>34){ fs-=4; x.font='700 '+fs+'px '+SG; }
+  x.fillStyle='#0F1923'; x.fillText(name,W/2,500);
+  const nw=Math.min(W-320,x.measureText(name).width+90); x.fillStyle='#0FB89B'; rr(x,W/2-nw/2,522,nw,5,2.5); x.fill();
+  x.fillStyle='#22303D'; x.font='600 26px '+NU; x.fillText('đã hoàn thành trọn vẹn 30 buổi luyện tập của hành trình',W/2,590);
+  x.fillStyle='#0F1923'; x.font='700 32px '+SG; x.fillText('EQ GYM — Nâng cao cơ bắp cảm xúc',W/2,636);
+  x.fillStyle='#5C6B7A'; x.font='600 19px '+NU; x.fillText('Thiết kế theo Mô hình Trí tuệ Cảm xúc Six Seconds · Hiểu mình · Làm chủ mình · Hoàn thiện mình',W/2,672);
+  const stats=[['30/30','BUỔI TẬP'],[fmt(c.ep),'ĐIỂM EP'],[c.avg!=null?c.avg+'/100':'—','ĐIỂM TB COACH AI'],[String(c.practices||0),'BÀI THỰC HÀNH']];
+  const cw=248,ch=86,gap=20,total=stats.length*cw+(stats.length-1)*gap; let sx=W/2-total/2; const sy=712;
+  stats.forEach(st=>{ rr(x,sx,sy,cw,ch,16); x.fillStyle='#fff'; x.fill(); x.strokeStyle='#E3E8EE'; x.lineWidth=2; x.stroke(); x.textAlign='center'; x.fillStyle='#0A6E5D'; x.font='700 30px '+SG; x.fillText(st[0],sx+cw/2,sy+40); x.fillStyle='#5C6B7A'; x.font='800 12px '+NU; spaced(x,st[1],sx+cw/2,sy+66,2,'center'); sx+=cw+gap; });
+  x.textAlign='center'; x.fillStyle='#B27607'; x.font='800 14px '+NU; spaced(x,'DANH HIỆU',W/2,852,4,'center');
+  x.fillStyle='#0F1923'; x.font='700 34px '+SG; x.fillText('BẬC THẦY EQ',W/2,892);
+  drawSeal(x,W/2,988,58);
+  x.textAlign='left'; x.fillStyle='#8A97A5'; x.font='800 14px '+NU; spaced(x,'NGÀY HOÀN THÀNH',124,900,3,'left');
+  x.fillStyle='#0F1923'; x.font='700 32px '+SG; x.fillText(certDate(c),124,946);
+  x.fillStyle='#8A97A5'; x.font='600 15px '+NU; x.fillText('Chuỗi ngày tập dài nhất: '+(c.streak||0)+' ngày',124,980);
+  x.textAlign='right'; x.fillStyle='#8A97A5'; x.font='800 14px '+NU; spaced(x,'CHUYÊN GIA HƯỚNG DẪN',W-124,900,3,'right');
+  x.strokeStyle='#0F1923'; x.lineWidth=2; x.beginPath(); x.moveTo(W-520,952); x.lineTo(W-124,952); x.stroke();
+  x.fillStyle='#0F1923'; x.font='700 26px '+SG; x.fillText(CERT_SIGNER.name,W-124,986);
+  x.fillStyle='#5C6B7A'; x.font='600 14px '+NU; x.fillText(CERT_SIGNER.title,W-124,1012);
+  try{ UI.certImg=cv.toDataURL('image/png'); }catch(e){ UI.certImg=null; toast('Không tạo được ảnh chứng nhận'); }
+  if(UI.certOpen) render();
+}
+async function shareCert(){ if(!UI.certImg){ toast('Đang tạo ảnh, đợi chút nhé...'); return; } sfx('tap');
+  try{ const blob=await (await fetch(UI.certImg)).blob(); const file=new File([blob],certFile(),{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:'Chứng nhận EQ GYM',text:'Mình vừa hoàn thành 30 ngày EQ GYM — Phòng tập cảm xúc! 🎓'}); return; }
+  }catch(e){ if(e&&e.name==='AbortError') return; }
+  toast('Thiết bị chưa hỗ trợ chia sẻ trực tiếp — hãy tải ảnh về rồi chia sẻ nhé'); }
+function certCardHome(){ const c=S.cert; if(!c) return '';
+  return `<div onclick="openCert()" style="margin:12px 16px 0;background:linear-gradient(135deg,#FFF3D6,#FFE1A8);border:1px solid #F2D9A8;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:13px;cursor:pointer;box-shadow:0 10px 26px rgba(224,147,10,.18)"><div style="width:46px;height:46px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 46px">🎓</div><div style="flex:1;min-width:0"><div style="font-size:10.5px;font-weight:800;letter-spacing:1.5px;color:#B27607">GIẤY CHỨNG NHẬN HOÀN THÀNH</div><div style="font-size:14px;font-weight:800;color:#0F1923;line-height:1.3;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name||'Nhập tên để in chứng nhận')}</div><div style="font-size:11px;color:#8A6A1E;font-weight:700;margin-top:2px">${esc(c.id)} · ${esc(certDate(c))}</div></div><span style="font-size:20px;color:#B27607;font-weight:800">›</span></div>`; }
+function certBtnHtml(){ return `<button onclick="openCert()" style="width:100%;margin-top:12px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#E0930A,#C47A00);color:#fff;min-height:48px">🎓 Xem giấy chứng nhận hoàn thành</button>`; }
+function modalCert(){
+  const c=S.cert||{};
+  return `<div onclick="if(event.target===this)closeCert()" style="position:fixed;inset:0;background:rgba(15,25,35,.6);backdrop-filter:blur(8px);z-index:85;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;padding:20px 18px calc(env(safe-area-inset-bottom) + 22px);animation:up .28s ease">
+    <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><h3 style="margin:0;font-family:'Space Grotesk';font-size:18px;font-weight:700">🎓 Giấy chứng nhận hoàn thành</h3><div style="font-size:11.5px;color:#5C6B7A;font-weight:700;margin-top:2px">Mã ${esc(c.id||'')} · ${esc(certDate(c))}</div></div><button onclick="closeCert()" style="width:40px;height:40px;border-radius:12px;border:1px solid #E3E8EE;background:#fff;font-size:16px;cursor:pointer;flex:0 0 40px">✕</button></div>
+    <div style="margin-top:12px;border-radius:14px;overflow:hidden;border:1px solid #E3E8EE;background:#EEF2F6;aspect-ratio:1600/1131;display:flex;align-items:center;justify-content:center">${UI.certImg?`<img id="certimg" src="${UI.certImg}" alt="Giấy chứng nhận EQ GYM" style="width:100%;display:block">`:`<div style="color:#5C6B7A;font-weight:700;font-size:13px"><span class="sp"></span> Đang tạo chứng nhận...</div>`}</div>
+    <div style="margin-top:12px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:14px;padding:12px 13px"><div style="font-size:11px;color:#5C6B7A;font-weight:800;margin-bottom:6px;letter-spacing:.5px">HỌ TÊN IN TRÊN CHỨNG NHẬN</div><div style="display:flex;gap:8px"><input id="certname" value="${esc(c.name||'')}" placeholder="VD: Nguyễn Văn A" onkeydown="if(event.key==='Enter')saveCertName()" style="flex:1;min-width:0;background:#fff;border:1px solid #E3E8EE;border-radius:11px;padding:11px 12px;font-size:14px;font-weight:700"><button onclick="saveCertName()" style="flex:0 0 auto;border:none;border-radius:11px;padding:0 14px;font-size:12.5px;font-weight:800;cursor:pointer;background:#0F1923;color:#fff;min-height:44px">Cập nhật</button></div></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><a id="certdl" href="${UI.certImg||'#'}" download="${certFile()}" onclick="sfx('tap')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:14px;padding:14px;font-size:14px;font-weight:800;background:linear-gradient(135deg,#E0930A,#C47A00);color:#fff;min-height:50px;opacity:${UI.certImg?1:.5}">⬇ Tải ảnh PNG</a><button onclick="shareCert()" style="flex:1;border:1px solid #E3E8EE;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:50px">📤 Chia sẻ</button></div>
+    <p style="font-size:11px;color:#8A97A5;font-weight:600;margin:10px 0 0;line-height:1.55;text-align:center">📱 Trên iPhone, nếu nút tải mở ảnh ra tab mới: nhấn giữ ảnh → "Lưu vào Ảnh". Chứng nhận lưu theo tài khoản — xem lại bất cứ lúc nào ở mục Tài khoản.</p>
+  </div></div>`;
 }
 
 /* ===== HANDLERS ===== */
