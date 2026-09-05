@@ -52,6 +52,16 @@ Key chỉ lưu trong trình duyệt của người học, không gửi đi đâu
 
 Cấp bậc: Tân Binh Boong Tàu → Thuyền Viên → Hoa Tiêu → Thuyền Phó → Thuyền Trưởng → Tứ Hoàng Cảm Xúc → Vua Hải Tặc EQ
 
+## 🔥 Chuỗi ngày luyện tập
+
+Trang chủ hiện **chuỗi ngày liên tục** nổi bật (biểu tượng lửa). Học viên được tặng sẵn **1 Ngày nghỉ phép** 🧊 —
+lỡ nghỉ đúng 1 ngày thì chuỗi tự giữ nguyên (dùng 1 vé, có thông báo); nghỉ liền ≥2 ngày thì chuỗi mới reset,
+nhưng còn **48 giờ để "sửa chuỗi"** bằng EP (giá tăng theo số ngày đã mất, tối đa 40 triệu EP). Mua thêm vé nghỉ
+phép bằng EP, tối đa 2 lần/tuần, giá tăng dần trong tuần rồi reset. Đạt **chuỗi 7 ngày** lần đầu được thưởng
+20 triệu EP + huy hiệu 🏅 "Tuần Đầu Tiên". Chạm vào ô chuỗi trên trang chủ để xem chi tiết / mua vé / sửa chuỗi.
+Cơ chế này dựa trên nghiên cứu gamification cho khoá học online (chuỗi + "phao cứu" giữ học viên qua mốc rụng cao
+nhất — tuần đầu tiên).
+
 Tiến độ + nhật ký lưu tự động trên máy người học (localStorage), không cần server.
 
 ## 📘 Workbook trong app
@@ -69,8 +79,10 @@ hoặc bấm **⬇ Tải / In workbook PDF** để in ra viết tay.
 ## 🎓 Giấy chứng nhận hoàn thành
 
 Khi học viên hoàn thành **Bài 29** (đủ 30/30 buổi), app tự tạo **Giấy chứng nhận** (ảnh PNG vẽ bằng canvas,
-1600×1131) với: họ tên, mã chứng nhận `EQG-<năm>-<mã>-<hash>`, ngày hoàn thành, điểm EP, điểm TB Coach AI,
+1600×1131, phong cách khung vàng — hào quang tỏa sau huy chương, dải lụa, chữ dát vàng viền mảnh, laurel hai bên
+danh hiệu) với: họ tên, mã chứng nhận `EQG-<năm>-<mã>-<hash>`, ngày hoàn thành, điểm EP, điểm TB Coach AI,
 số bài thực hành, danh hiệu *Bậc Thầy EQ*, chữ ký chuyên gia (`CERT_SIGNER` trong `index.html`).
+Đổi màu/kiểu: sửa các hàm `goldGrad`, `glow`, `sunburst`, `drawSeal`, `laurelSprig`, `cornerFlourish` trong `index.html`.
 
 - Hiện ngay sau rương thưởng cuối cùng; xem lại ở thẻ vàng trên trang chủ, huy hiệu *Bậc Thầy EQ*, hoặc mục Tài khoản.
 - Học viên sửa được **tên in trên chứng nhận**, tải PNG hoặc chia sẻ (Web Share API).

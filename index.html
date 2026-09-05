@@ -84,7 +84,7 @@ function trimForSync(){
   const hist={}; Object.keys(S.history||{}).forEach(k=>{ hist[k]=(S.history[k]||[]).slice(0,8).map(x=>({ts:x.ts,score:x.score,dims:x.dims,by:x.by})); });
   const ans={}; Object.keys(S.ans||{}).forEach(k=>{ if(S.ans[k]) ans[k]=cap(S.ans[k],500); });
   const scores={}; Object.keys(S.scores||{}).forEach(k=>{ const x=S.scores[k]||{}; scores[k]={score:x.score,dims:x.dims,by:x.by,feedback:cap(x.feedback,220),tip:cap(x.tip,160)}; });
-  let out={done:S.done,graded:S.graded,streak:S.streak,last:S.last,bounty:S.bounty,practices:S.practices,quiz:S.quiz,qans:S.qans,scen:S.scen,scores:scores,ans:ans,history:hist,cert:S.cert||null};
+  let out={done:S.done,graded:S.graded,streak:S.streak,last:S.last,bounty:S.bounty,practices:S.practices,quiz:S.quiz,qans:S.qans,scen:S.scen,scores:scores,ans:ans,history:hist,cert:S.cert||null,freezes:S.freezes,bestStreak:S.bestStreak,broken:S.broken||null,streak7:S.streak7,freezeBuys:(S.freezeBuys||[]).slice(-10)};
   try{ if(JSON.stringify(out).length>45000){ out.ans={}; } if(JSON.stringify(out).length>45000){ out.history={}; } }catch(e){}
   return out;
 }
@@ -99,6 +99,9 @@ function stopRankRefresh(){ if(_rankT){ clearInterval(_rankT); _rankT=null; } }
 function applyProgress(p){ try{ p=p||{}; const L=S, m=Object.assign(dflt(),p);
   m.done=[...new Set([...(p.done||[]),...(L.done||[])])];
   m.bounty=Math.max(p.bounty||0,L.bounty||0); m.streak=Math.max(p.streak||0,L.streak||0); m.practices=Math.max(p.practices||0,L.practices||0); m.last=p.last||L.last;
+  m.bestStreak=Math.max(p.bestStreak||0,L.bestStreak||0,m.streak); m.freezes=Math.max(p.freezes||0,L.freezes||0); m.streak7=!!(p.streak7||L.streak7);
+  m.broken=(L.broken&&(!p.broken||L.broken.at>=p.broken.at))?L.broken:(p.broken||null);
+  m.freezeBuys=[...new Set([...(p.freezeBuys||[]),...(L.freezeBuys||[])])].slice(-10);
   ['ans','scores','graded','scen','qans'].forEach(k=>{ m[k]=Object.assign({},p[k]||{},L[k]||{}); });
   m.history=Object.assign({},p.history||{},L.history||{}); m.chat=(L.chat&&L.chat.length)?L.chat:(p.chat||[]); m.quiz=p.quiz||L.quiz; m.cert=p.cert||L.cert||null;
   S=m; try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ _mem=S; }
@@ -289,6 +292,7 @@ const SEAS={
 };
 const RANKS=[[0,'Người Mới Nhập Môn'],[3,'Hội Viên Đồng'],[7,'Hội Viên Bạc'],[12,'Hội Viên Vàng'],[18,'Vận Động Viên EQ'],[24,'Coach Tập Sự'],[30,'Bậc Thầy EQ']];
 const B_LESSON=10000000, B_PRACTICE=5000000, B_SCORE=100000;
+const STREAK7_BONUS=20000000, FREEZE_BASE=5000000, FREEZE_MAX_PER_WEEK=2, REPAIR_PER_DAY=2000000, REPAIR_CAP=40000000, REPAIR_WINDOW_H=48;
 const COMICS={0:15,1:15,2:15,3:12,4:15,5:15,6:15,7:15,8:15,9:15,10:15,11:15,12:15,13:15,14:15,15:15,16:15,17:15,18:15,19:15,20:15,21:15,22:15,23:15,24:15,25:15,26:15,27:15,28:15,29:15};
 /* 📘 WORKBOOK: số trang mỗi bài (workbook/wN/pNN.jpg + workbook/bai-N.pdf) — sinh bởi scratchpad/wb_build.py */
 const WORKBOOK=/*WORKBOOK_MAP*/{0:4,1:5,2:7,3:5,4:4,5:5,6:4,7:5,8:4,9:4,10:5,11:7,12:7,13:5,14:5,15:6,16:7,17:6,18:7,19:6,20:5,21:5,22:8,23:6,24:8,25:8,26:7,27:7,28:8,29:7};
@@ -334,9 +338,9 @@ function load(){
   try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s) return Object.assign(dflt(),s); }catch(e){}
   return dflt();
 }
-function dflt(){ return {done:[],ans:{},scores:{},graded:{},streak:0,last:null,bounty:0,scen:{},history:{},chat:[],practices:0,quiz:null,qans:{},cert:null}; }
+function dflt(){ return {done:[],ans:{},scores:{},graded:{},streak:0,last:null,bounty:0,scen:{},history:{},chat:[],practices:0,quiz:null,qans:{},cert:null,freezes:1,bestStreak:0,broken:null,streak7:false,freezeBuys:[]}; }
 let S=load();
-let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:'',certOpen:false,certImg:null,zv:null};
+let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:'',certOpen:false,certImg:null,zv:null,streakOpen:false};
 let snd; try{ snd=Object.assign({bgm:true,sfx:true,track:0,vol:0.5}, JSON.parse(localStorage.getItem('eqgym_sound_v1'))||{}); }catch(e){ snd={bgm:true,sfx:true,track:0,vol:0.5}; }
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ _mem=S; } scheduleSync(); syncPoints(); }
 function saveSnd(){ try{ localStorage.setItem('eqgym_sound_v1',JSON.stringify(snd)); }catch(e){} }
@@ -455,20 +459,47 @@ function videoFor(n){
 }
 function nav(v){ sfx('tap'); UI.view=v; if(v==='quiz') render(); else render(); if(v!=='chat') window.scrollTo(0,0); else scrollChatDown(); }
 
+/* ===== 🔥 CHUỖI NGÀY + NGÀY NGHỈ PHÉP (streak + freeze) ===== */
+function dayStr(off){ return new Date(Date.now()+(off||0)*86400000).toDateString(); }
+function bumpStreak(){
+  if(S.broken && Date.now()-S.broken.at>REPAIR_WINDOW_H*3600000) S.broken=null;
+  const today=dayStr(0); if(S.last===today) return {freeze:false,day7:false};
+  const y=dayStr(-1), y2=dayStr(-2); let freeze=false;
+  if(S.last===y){ S.streak=(S.streak||0)+1; }
+  else if(S.last===y2 && (S.freezes||0)>0){ S.freezes--; S.streak=(S.streak||0)+1; freeze=true; }
+  else if(S.last){ if((S.streak||0)>=2) S.broken={streak:S.streak,at:Date.now()}; S.streak=1; }
+  else S.streak=1;
+  S.last=today; S.bestStreak=Math.max(S.bestStreak||0,S.streak);
+  let day7=false; if(S.streak===7 && !S.streak7){ S.streak7=true; day7=true; }
+  return {freeze,day7};
+}
+function freezeBuysThisWeek(){ const cut=Date.now()-7*86400000; return (S.freezeBuys||[]).filter(t=>t>cut).length; }
+function freezeCost(){ return Math.round(FREEZE_BASE*(1+0.5*freezeBuysThisWeek())); }
+function buyFreeze(){ const left=FREEZE_MAX_PER_WEEK-freezeBuysThisWeek(); if(left<=0){ toast('Tối đa '+FREEZE_MAX_PER_WEEK+' lần/tuần — quay lại sau nhé'); return; }
+  const cost=freezeCost(); if((S.bounty||0)<cost){ toast('Chưa đủ EP — luyện thêm để mua Ngày nghỉ phép'); return; }
+  S.bounty-=cost; S.freezes=(S.freezes||0)+1; S.freezeBuys=[...(S.freezeBuys||[]),Date.now()]; save(); sfx('success'); toast('🧊 +1 Ngày nghỉ phép! Còn '+S.freezes+' cái.'); render(); }
+function repairLeftMs(){ return S.broken?(S.broken.at+REPAIR_WINDOW_H*3600000-Date.now()):0; }
+function repairCost(){ return S.broken?Math.min(REPAIR_CAP,Math.max(3000000,S.broken.streak*REPAIR_PER_DAY)):0; }
+function repairStreak(){ if(!S.broken||repairLeftMs()<=0) return; const cost=repairCost(); if((S.bounty||0)<cost){ toast('Chưa đủ EP để sửa chuỗi'); return; }
+  S.bounty-=cost; S.streak=S.broken.streak; S.bestStreak=Math.max(S.bestStreak||0,S.streak); S.broken=null; save(); sfx('success'); confettiRain(); toast('🔥 Đã khôi phục chuỗi '+S.streak+' ngày!'); render(); }
+function openStreak(){ sfx('tap'); UI.streakOpen=true; render(); }
+
 function complete(n){
   if(isDone(n)){ n<29?openLesson(n+1):goHome(); return; }
   S.done.push(n); S.bounty+=B_LESSON;
   if(CODE_MODE&&MEMBER&&MEMBER.role==='member'){ try{ api({action:'event',code:MEMBER.code,event:'done-lesson',detail:'Buổi '+n+' — '+LESSONS[n].title}); }catch(e){} }
-  const today=new Date().toDateString();
-  if(S.last!==today){ const y=new Date(Date.now()-86400000).toDateString(); S.streak=(S.last===y)?S.streak+1:1; S.last=today; }
+  const sres=bumpStreak(); let bonus=B_LESSON;
+  if(sres.day7){ S.bounty+=STREAK7_BONUS; bonus+=STREAK7_BONUS; if(CODE_MODE&&MEMBER&&MEMBER.role==='member'){ try{ api({action:'event',code:MEMBER.code,event:'streak7'}); }catch(e){} } }
   save(); confettiRain(); sfx('chest');
+  if(sres.freeze) toast('🧊 Đã dùng 1 Ngày nghỉ phép để giữ chuỗi '+S.streak+' ngày!');
   const d=S.done.length, r=rankOf(d), pr=rankOf(d-1);
   const mdone=m=>LESSONS.filter(l=>l.module===m).every(l=>isDone(l.n));
   let title='BUỔI TẬP HOÀN THÀNH!', msg='Buổi '+n+' · '+LESSONS[n].title, rc='#0FB89B';
   if(d>=30){ title='BẬC THẦY EQ!'; msg='Bạn đã hoàn thành trọn vẹn 30 buổi của hành trình EQ GYM. Thành quả lớn nhất là con người mới của bạn — và giấy chứng nhận hoàn thành đã sẵn sàng!'; rc='#E0930A'; if(!S.cert){ S.cert=makeCert(); save(); certEvent(); } }
+  else if(sres.day7){ title='🔥 CHUỖI 7 NGÀY!'; msg='Bạn đã luyện tập liên tục 7 ngày — thói quen đang hình thành! Huy hiệu "Tuần Đầu Tiên" đã mở khóa cùng phần thưởng đặc biệt.'; rc='#E85B5B'; }
   else if(r[1]!==pr[1]){ title='THĂNG HẠNG: '+r[1]+'!'; rc='#E0930A'; }
   else if((n===12&&mdone(1))||(n===20&&mdone(2))||(n===29&&mdone(3))){ title='HUY CHƯƠNG MỚI!'; rc='#4A9EFF'; }
-  UI.treasure={title,msg,rc,earn:'+'+fmt(B_LESSON)+' EP',btn:n<29?'Sang buổi tập tiếp theo ›':(d>=30?'🎓 Nhận giấy chứng nhận':'Về lộ trình'),next:n<29?n+1:null,cert:d>=30};
+  UI.treasure={title,msg,rc,earn:'+'+fmt(bonus)+' EP',btn:n<29?'Sang buổi tập tiếp theo ›':(d>=30?'🎓 Nhận giấy chứng nhận':'Về lộ trình'),next:n<29?n+1:null,cert:d>=30};
   render();
 }
 function closeTreasure(){ const t=UI.treasure; UI.treasure=null; if(t&&t.cert&&S.cert){ goHome(); openCert(); return; } if(t&&t.next!=null&&AUTO_NEXT) openLesson(t.next); else goHome(); }
@@ -821,11 +852,22 @@ function viewHome(){
     <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;flex:0 0 42px"><div style="width:0;height:0;border-left:14px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:4px"></div></div>
     <div style="flex:1;min-width:0;color:#fff"><div style="font-size:10.5px;font-weight:800;letter-spacing:1.5px;opacity:.85">TIẾP TỤC · BUỔI ${nextN}</div><div style="font-size:14.5px;font-weight:800;line-height:1.3;margin-top:1px">${esc(LESSONS[nextN].title)}</div></div><span style="font-size:20px;color:#fff;font-weight:800">›</span></div>`;
   h+=`<div style="display:flex;gap:9px;margin:12px 16px 0">
-    ${[[d+'/30','Buổi hoàn thành'],[String(S.streak),'Ngày tập liên tục'],[sc.length?String(Math.round(sc.reduce((a,b)=>a+b,0)/sc.length)):'—','Điểm TB AI']].map(s=>`<div style="flex:1;background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:12px 6px;text-align:center"><b style="display:block;font-family:'Space Grotesk';font-size:17px;color:#0A6E5D">${s[0]}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">${s[1]}</span></div>`).join('')}
+    <div style="flex:1;background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:12px 6px;text-align:center"><b style="display:block;font-family:'Space Grotesk';font-size:17px;color:#0A6E5D">${d}/30</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">Buổi hoàn thành</span></div>
+    <div onclick="openStreak()" style="flex:1;position:relative;background:${S.streak>0?'linear-gradient(160deg,#FFF3E0,#FFE1B8)':'#fff'};border:1px solid ${S.streak>0?'#F2D9A8':'#E3E8EE'};border-radius:15px;padding:12px 6px;text-align:center;cursor:pointer">
+      ${(S.freezes||0)>0?`<span style="position:absolute;top:4px;right:6px;font-size:9.5px;font-weight:800;color:#2F6FBF">🧊${S.freezes}</span>`:''}${S.streak7?`<span style="position:absolute;top:4px;left:6px;font-size:10px">🏅</span>`:''}
+      <b style="display:block;font-family:'Space Grotesk';font-size:17px;color:#B25E09">${S.streak>0?'🔥 ':''}${S.streak}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">Ngày liên tục</span>
+    </div>
+    <div style="flex:1;background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:12px 6px;text-align:center"><b style="display:block;font-family:'Space Grotesk';font-size:17px;color:#0A6E5D">${sc.length?String(Math.round(sc.reduce((a,b)=>a+b,0)/sc.length)):'—'}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">Điểm TB AI</span></div>
   </div>
   <div style="display:flex;gap:9px;margin:11px 16px 0">
     ${badges.map(b=>`<div onclick="${(b[0]==='Bậc Thầy EQ'&&S.cert)?'openCert()':''}" style="flex:1;background:#fff;border-radius:15px;padding:11px 4px;text-align:center;opacity:${b[2]?1:.6};border:1px solid ${b[2]?b[1]:'#E3E8EE'};cursor:${(b[0]==='Bậc Thầy EQ'&&S.cert)?'pointer':'default'}"><svg width="26" height="26" viewBox="0 0 100 100" style="display:block;margin:0 auto"><circle cx="50" cy="50" r="34" fill="none" stroke="${b[2]?b[1]:'#C7D0D9'}" stroke-width="13"/><circle cx="50" cy="50" r="9" fill="${b[2]?'#E85B5B':'#C7D0D9'}"/></svg><span style="font-size:9px;color:${b[2]?'#0F1923':'#8A97A5'};display:block;margin-top:5px;line-height:1.3;font-weight:800">${b[0]}</span></div>`).join('')}
   </div>`;
+  if(S.broken && repairLeftMs()>0){ const hrs=Math.max(1,Math.ceil(repairLeftMs()/3600000));
+    h+=`<div onclick="openStreak()" style="margin:11px 16px 0;background:linear-gradient(135deg,#FDEEEE,#FBD8D8);border:1px solid #F5CFCF;border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:12px;cursor:pointer">
+      <div style="font-size:24px">💔</div>
+      <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:800;color:#C74848">Chuỗi ${S.broken.streak} ngày vừa đứt!</div><div style="font-size:11px;color:#8A5252;font-weight:600;margin-top:1px">Sửa lại trong ${hrs} giờ nữa với ${fmt(repairCost())} EP</div></div>
+      <span style="font-size:11.5px;font-weight:800;color:#C74848;white-space:nowrap">Sửa ngay ›</span>
+    </div>`; }
   h+=certCardHome();
   h+=eqProfileHome();
   // accordion
@@ -1057,11 +1099,12 @@ function fixedUI(){
   if(UI.payOpen) h+=modalPay();
   if(UI.treasure) h+=modalTreasure();
   if(UI.certOpen) h+=modalCert();
+  if(UI.streakOpen) h+=sheetStreak();
   if(UI.zv) h+=modalZoom();
   if(UI.toastMsg) h+=`<div style="position:fixed;left:50%;transform:translateX(-50%);bottom:120px;background:#0F1923;color:#fff;font-weight:700;padding:13px 20px;border-radius:13px;z-index:99;box-shadow:0 12px 34px rgba(15,25,35,.3);font-size:13px;max-width:86%;text-align:center;animation:fade .25s">${esc(UI.toastMsg)}</div>`;
   return h;
 }
-function sheet(inner){ return `<div onclick="if(event.target===this){UI.settingsOpen=false;UI.musicOpen=false;render()}" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:70;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">${inner}</div></div>`; }
+function sheet(inner){ return `<div onclick="if(event.target===this){UI.settingsOpen=false;UI.musicOpen=false;UI.streakOpen=false;render()}" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:70;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">${inner}</div></div>`; }
 function sheetSettings(){
   if(OPEN_MODE && (!MEMBER||MEMBER.role!=='admin')){
     const m=MEMBER||{};
@@ -1105,6 +1148,24 @@ function sheetMusic(){
     <div style="display:flex;align-items:center;justify-content:space-between;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:14px;padding:12px 14px;margin-top:10px;min-height:52px"><span style="font-size:14px;font-weight:800">Hiệu ứng âm thanh</span><button onclick="toggleSfx()" style="width:54px;height:30px;border-radius:999px;border:none;cursor:pointer;background:${snd&&snd.sfx?'#0FB89B':'#C7D0D9'};position:relative"><span style="position:absolute;top:3px;left:${snd&&snd.sfx?27:3}px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.2)"></span></button></div>`;
   return sheet(h);
 }
+function sheetStreak(){
+  const left=FREEZE_MAX_PER_WEEK-freezeBuysThisWeek(), cost=freezeCost();
+  let h=`<div style="text-align:center">
+    <div style="font-size:44px;line-height:1">${S.streak>0?'🔥':'💤'}</div>
+    <div style="font-family:'Space Grotesk';font-size:42px;font-weight:700;color:#B25E09;margin-top:4px">${S.streak}</div>
+    <div style="font-size:12px;color:#5C6B7A;font-weight:800;letter-spacing:1px">NGÀY LUYỆN TẬP LIÊN TỤC</div>
+  </div>
+  <div style="display:flex;gap:9px;margin-top:16px">
+    <div style="flex:1;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;padding:12px;text-align:center"><b style="display:block;font-family:'Space Grotesk';font-size:18px;color:#0F1923">${S.bestStreak||S.streak||0}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">Kỷ lục</span></div>
+    <div style="flex:1;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;padding:12px;text-align:center"><b style="display:block;font-family:'Space Grotesk';font-size:18px;color:#0F1923">🧊 ${S.freezes||0}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">Ngày nghỉ phép</span></div>
+  </div>
+  <p style="color:#5C6B7A;font-size:12px;line-height:1.65;margin:14px 2px 0;font-weight:600">🧊 <b style="color:#0F1923">Ngày nghỉ phép</b> tự dùng khi bạn lỡ nghỉ đúng 1 ngày, giữ nguyên chuỗi tập. Nghỉ liền từ 2 ngày trở lên thì chuỗi mới reset.${S.streak7?' Bạn đã mở khóa huy hiệu 🏅 <b style="color:#0F1923">Tuần Đầu Tiên</b>!':''}</p>
+  <button onclick="buyFreeze()" ${left<=0?'disabled':''} style="width:100%;margin-top:12px;border:1px solid #B6EDDF;border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;background:#EAFBF6;color:#0A6E5D;min-height:48px;opacity:${left<=0?.5:1}">${left<=0?'Đã mua tối đa lượt tuần này':'🧊 Mua thêm — '+fmt(cost)+' EP ('+left+'/'+FREEZE_MAX_PER_WEEK+' lượt tuần này)'}</button>`;
+  if(S.broken && repairLeftMs()>0){ const hrs=Math.max(1,Math.ceil(repairLeftMs()/3600000));
+    h+=`<div style="margin-top:14px;background:#FDEEEE;border:1px solid #F5CFCF;border-radius:14px;padding:13px 14px"><div style="font-size:13px;font-weight:800;color:#C74848">💔 Chuỗi ${S.broken.streak} ngày vừa đứt</div><div style="font-size:11.5px;color:#8A5252;font-weight:600;margin-top:3px">Còn ${hrs} giờ để sửa lại — ${fmt(repairCost())} EP</div><button onclick="repairStreak()" style="width:100%;margin-top:9px;border:none;border-radius:11px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;background:#E85B5B;color:#fff">Sửa chuỗi ngay</button></div>`; }
+  h+=`<button onclick="UI.streakOpen=false;render()" style="width:100%;margin-top:14px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:46px">Đóng</button>`;
+  return sheet(h);
+}
 function modalTreasure(){
   const t=UI.treasure;
   return `<div style="position:fixed;inset:0;background:rgba(15,25,35,.55);backdrop-filter:blur(6px);z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;animation:fade .3s"><div style="background:#fff;border-radius:24px;padding:30px 24px;text-align:center;max-width:340px;width:100%;animation:pop .45s ease">${ring(80,t.rc)}<h2 style="color:#0F1923;margin:12px 0 4px;font-family:'Space Grotesk';font-size:20px;font-weight:700">${esc(t.title)}</h2><p style="color:#5C6B7A;margin:3px 0;font-size:14px;line-height:1.6;font-weight:600">${esc(t.msg)}</p><div style="font-family:'Space Grotesk';font-size:18px;font-weight:700;color:#0A6E5D;margin-top:10px">${esc(t.earn)}</div><button onclick="closeTreasure()" style="width:100%;margin-top:20px;border:none;border-radius:15px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:52px">${esc(t.btn)}</button></div></div>`;
@@ -1122,42 +1183,76 @@ function saveCertName(){ const v=(val('certname')||'').trim(); if(!v){ toast('Nh
 function rr(x,X,Y,w,h,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
 function spaced(x,text,X,Y,sp,align){ const chars=[...text]; let w=0; chars.forEach(ch=>w+=x.measureText(ch).width); w+=sp*(chars.length-1); let cx=align==='center'?X-w/2:(align==='right'?X-w:X); const ta=x.textAlign; x.textAlign='left'; chars.forEach(ch=>{ x.fillText(ch,cx,Y); cx+=x.measureText(ch).width+sp; }); x.textAlign=ta; }
 function drawLogo(x,px,py,size){ const k=size/100; x.save(); x.translate(px,py); x.scale(k,k); x.fillStyle='#0F1923'; [[10,18,9,64],[10,18,32,9],[10,45,26,9],[10,73,32,9]].forEach(r=>{ rr(x,r[0],r[1],r[2],r[3],4.5); x.fill(); }); x.strokeStyle='#0FB89B'; x.lineWidth=9; x.beginPath(); x.arc(70,50,22,0,Math.PI*2); x.stroke(); x.fillStyle='#E85B5B'; x.beginPath(); x.arc(70,50,5,0,Math.PI*2); x.fill(); x.save(); x.translate(78,64); x.rotate(Math.PI/4); x.fillStyle='#0FB89B'; rr(x,0,0,19,7,3.5); x.fill(); x.restore(); x.restore(); }
-function drawSeal(x,cx,cy,r){ x.save(); x.translate(cx,cy); for(let i=0;i<28;i++){ const a=i/28*Math.PI*2; x.fillStyle='#E0930A'; x.beginPath(); x.arc(Math.cos(a)*(r-6),Math.sin(a)*(r-6),9,0,Math.PI*2); x.fill(); } const g=x.createRadialGradient(-r*.3,-r*.3,r*.1,0,0,r); g.addColorStop(0,'#F6B93B'); g.addColorStop(1,'#C47A00'); x.fillStyle=g; x.beginPath(); x.arc(0,0,r-4,0,Math.PI*2); x.fill(); x.strokeStyle='rgba(255,255,255,.75)'; x.lineWidth=2; x.beginPath(); x.arc(0,0,r-16,0,Math.PI*2); x.stroke(); x.fillStyle='#fff'; x.textAlign='center'; x.font='700 34px "Space Grotesk",sans-serif'; x.fillText('30',0,4); x.font='800 11px "Nunito",sans-serif'; spaced(x,'NGÀY EQ',0,24,2,'center'); x.restore(); }
+function glow(x,cx,cy,r,color,alpha){ const g=x.createRadialGradient(cx,cy,0,cx,cy,r); g.addColorStop(0,color+Math.round(alpha*255).toString(16).padStart(2,'0')); g.addColorStop(1,color+'00'); x.fillStyle=g; x.beginPath(); x.arc(cx,cy,r,0,Math.PI*2); x.fill(); }
+function sunburst(x,cx,cy,rOut,rays,width,color,alpha){ x.save(); x.translate(cx,cy); x.globalAlpha=alpha; x.fillStyle=color; for(let i=0;i<rays;i++){ x.save(); x.rotate(i/rays*Math.PI*2); x.beginPath(); x.moveTo(-width/2,0); x.lineTo(width/2,0); x.lineTo(0,-rOut); x.closePath(); x.fill(); x.restore(); } x.restore(); }
+function goldGrad(x,x0,x1,y,mid){ const g=x.createLinearGradient(x0,y,x1,y); g.addColorStop(0,'#8A5A12'); g.addColorStop(.2,'#E7BA55'); g.addColorStop(.5,mid||'#FFEFC2'); g.addColorStop(.8,'#D9A72B'); g.addColorStop(1,'#8A5A12'); return g; }
+function goldText(x,text,cx,cy,font,ink){ x.font=font; const px=+((font.match(/(\d+)px/)||[0,32])[1]);
+  x.save(); x.lineJoin='round'; x.miterLimit=2;
+  x.strokeStyle='#C98A1E'; x.lineWidth=Math.max(1.1,px/34); x.strokeText(text,cx,cy);
+  x.shadowColor='rgba(160,110,20,.3)'; x.shadowBlur=3; x.shadowOffsetY=1; x.fillStyle=ink||'#241606'; x.fillText(text,cx,cy);
+  x.restore(); }
+function leaf(x,cx,cy,angle,len,wid,color){ x.save(); x.translate(cx,cy); x.rotate(angle); x.fillStyle=color; x.beginPath(); x.moveTo(0,0); x.quadraticCurveTo(len*.4,-wid,len,0); x.quadraticCurveTo(len*.4,wid,0,0); x.closePath(); x.fill(); x.strokeStyle='rgba(255,255,255,.35)'; x.lineWidth=.8; x.beginPath(); x.moveTo(len*.08,0); x.lineTo(len*.92,0); x.stroke(); x.restore(); }
+function qpt(P0,P1,P2,t){ const m=1-t; return {x:m*m*P0[0]+2*m*t*P1[0]+t*t*P2[0], y:m*m*P0[1]+2*m*t*P1[1]+t*t*P2[1]}; }
+function qtan(P0,P1,P2,t){ const m=1-t; return {x:2*m*(P1[0]-P0[0])+2*t*(P2[0]-P1[0]), y:2*m*(P1[1]-P0[1])+2*t*(P2[1]-P1[1])}; }
+function laurelSprig(x,px,py,mirror,color){ const m=mirror?-1:1; const P0=[0,0],P1=[m*6,-44],P2=[m*18,-84];
+  x.save(); x.translate(px,py); x.strokeStyle=color; x.lineWidth=2.6; x.lineCap='round'; x.beginPath(); x.moveTo(P0[0],P0[1]); x.quadraticCurveTo(P1[0],P1[1],P2[0],P2[1]); x.stroke();
+  const n=6; for(let i=1;i<=n;i++){ const t=i/(n+1), p=qpt(P0,P1,P2,t), tg=qtan(P0,P1,P2,t), tl=Math.hypot(tg.x,tg.y)||1, nx=-tg.y/tl, ny=tg.x/tl, side=(i%2===0?1:-1);
+    const len=22-t*10, wid=7-t*2.4, ang=Math.atan2(ny*side,nx*side); leaf(x,p.x+nx*side*3,p.y+ny*side*3,ang,len,wid,color); }
+  x.restore(); }
+function cornerFlourish(x,cx,cy,rot,color){ x.save(); x.translate(cx,cy); x.rotate(rot);
+  x.strokeStyle=color; x.lineWidth=2; x.beginPath(); x.moveTo(-22,0); x.lineTo(22,0); x.moveTo(0,-22); x.lineTo(0,22); x.stroke();
+  x.fillStyle=color; x.save(); x.rotate(Math.PI/4); rr(x,-6,-6,12,12,2.5); x.fill(); x.restore();
+  x.fillStyle='#E85B5B'; x.beginPath(); x.arc(0,0,3.6,0,Math.PI*2); x.fill(); x.restore(); }
+function drawSeal(x,cx,cy,r){ x.save(); x.translate(cx,cy);
+  const ribbon=(side)=>{ x.save(); x.rotate(side*0.24); x.fillStyle=side>0?'#9E2B3A':'#7A1F2B'; x.beginPath(); x.moveTo(-14,r-18); x.lineTo(14,r-18); x.lineTo(20,r+92); x.lineTo(0,r+70); x.lineTo(-20,r+92); x.closePath(); x.fill(); x.restore(); };
+  ribbon(-1); ribbon(1);
+  for(let i=0;i<32;i++){ const a=i/32*Math.PI*2; x.fillStyle=i%2===0?'#E0930A':'#C47A00'; x.beginPath(); x.arc(Math.cos(a)*(r-5),Math.sin(a)*(r-5),8.5,0,Math.PI*2); x.fill(); }
+  const g=x.createRadialGradient(-r*.35,-r*.4,r*.08,0,0,r); g.addColorStop(0,'#FFF3C4'); g.addColorStop(.35,'#F6C453'); g.addColorStop(.75,'#D99A1F'); g.addColorStop(1,'#A5710C'); x.fillStyle=g; x.beginPath(); x.arc(0,0,r-4,0,Math.PI*2); x.fill();
+  x.strokeStyle='rgba(255,255,255,.6)'; x.lineWidth=1.5; x.beginPath(); x.arc(0,0,r-11,0,Math.PI*2); x.stroke();
+  x.strokeStyle='rgba(120,74,10,.5)'; x.lineWidth=2; x.beginPath(); x.arc(0,0,r-19,0,Math.PI*2); x.stroke();
+  x.fillStyle='rgba(255,255,255,.55)'; x.beginPath(); x.ellipse(-r*.28,-r*.32,r*.34,r*.16,-0.5,0,Math.PI*2); x.fill();
+  x.fillStyle='#5B3A08'; x.textAlign='center'; x.font='700 36px "Space Grotesk",sans-serif'; x.fillText('30',0,5); x.font='800 11px "Nunito",sans-serif'; spaced(x,'NGÀY EQ',0,25,2,'center');
+  x.restore(); }
 async function renderCert(){
   const c=S.cert; if(!c) return;
   try{ await Promise.all(['700 80px "Space Grotesk"','700 30px "Space Grotesk"','600 26px "Nunito"','700 26px "Nunito"','800 16px "Nunito"'].map(f=>document.fonts.load(f))); }catch(e){}
   const W=1600,H=1131, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
   const SG='"Space Grotesk",sans-serif', NU='"Nunito",sans-serif';
-  x.fillStyle='#FBF8F1'; x.fillRect(0,0,W,H);
-  x.fillStyle='rgba(15,25,35,.055)'; for(let i=30;i<W;i+=26) for(let j=30;j<H;j+=26){ x.beginPath(); x.arc(i,j,1.3,0,Math.PI*2); x.fill(); }
-  const g=x.createLinearGradient(0,0,W,0); g.addColorStop(0,'#0FB89B'); g.addColorStop(1,'#0A6E5D'); x.fillStyle=g; x.fillRect(0,0,W,16); x.fillRect(0,H-16,W,16);
-  x.strokeStyle='#0F1923'; x.lineWidth=6; x.strokeRect(46,46,W-92,H-92);
-  x.strokeStyle='#0FB89B'; x.lineWidth=2; x.strokeRect(64,64,W-128,H-128);
-  [[64,64,1],[W-64,64,-1]].forEach(k=>{ x.fillStyle='#E85B5B'; x.beginPath(); x.arc(k[0],k[1],7,0,Math.PI*2); x.fill(); x.beginPath(); x.arc(k[0],H-64,7,0,Math.PI*2); x.fill(); });
+  const bg=x.createRadialGradient(W/2,H*.42,80,W/2,H*.42,W*.75); bg.addColorStop(0,'#FFFCF3'); bg.addColorStop(.6,'#F8EFD8'); bg.addColorStop(1,'#EEDFB8'); x.fillStyle=bg; x.fillRect(0,0,W,H);
+  x.fillStyle='rgba(120,86,20,.05)'; for(let i=30;i<W;i+=26) for(let j=30;j<H;j+=26){ x.beginPath(); x.arc(i,j,1.3,0,Math.PI*2); x.fill(); }
+  glow(x,W/2,378,420,'#F6C453',.30); glow(x,W/2,988,300,'#F6C453',.55); sunburst(x,W/2,988,190,48,10,'#F6C453',.4); sunburst(x,W/2,988,150,48,7,'#FFE9AE',.55);
+  const gg=x.createLinearGradient(0,0,W,0); gg.addColorStop(0,'#8A5A12'); gg.addColorStop(.25,'#F0C05C'); gg.addColorStop(.5,'#FFF3C4'); gg.addColorStop(.75,'#F0C05C'); gg.addColorStop(1,'#8A5A12'); x.fillStyle=gg; x.fillRect(0,0,W,18); x.fillRect(0,H-18,W,18);
+  x.fillStyle='#0FB89B'; x.fillRect(0,18,W,3); x.fillRect(0,H-21,W,3);
+  x.strokeStyle='#0F1923'; x.lineWidth=5; x.strokeRect(46,46,W-92,H-92);
+  x.strokeStyle=goldGrad(x,64,W-64,64); x.lineWidth=3; x.strokeRect(64,64,W-128,H-128);
+  [[64,64],[W-64,64],[64,H-64],[W-64,H-64]].forEach((k,i)=>cornerFlourish(x,k[0],k[1],i*Math.PI/2,'#B8860B'));
+  [[W/2,64,0],[W/2,H-64,Math.PI]].forEach(k=>cornerFlourish(x,k[0],k[1],k[2],'#B8860B'));
   drawLogo(x,100,90,92); x.textBaseline='alphabetic';
   x.textAlign='left'; x.fillStyle='#0F1923'; x.font='700 44px '+SG; x.fillText('EQ',206,140); x.fillStyle='#0FB89B'; x.fillText('GYM',206+x.measureText('EQ ').width,140);
   x.fillStyle='#5C6B7A'; x.font='800 14px '+NU; spaced(x,'PHÒNG TẬP CẢM XÚC · HÀNH TRÌNH 30 NGÀY',206,168,3,'left');
   x.textAlign='right'; x.fillStyle='#8A97A5'; x.font='700 15px '+SG; x.fillText('MÃ CHỨNG NHẬN · '+c.id,W-100,132);
-  x.textAlign='center'; x.fillStyle='#0F1923'; x.font='700 66px '+SG; x.fillText('GIẤY CHỨNG NHẬN',W/2,296);
-  x.fillStyle='#0A6E5D'; x.font='800 17px '+NU; spaced(x,'CERTIFICATE OF COMPLETION',W/2,334,7,'center');
+  x.textAlign='center'; goldText(x,'GIẤY CHỨNG NHẬN',W/2,296,'700 68px '+SG);
+  x.fillStyle='#7A1F2B'; x.font='800 17px '+NU; spaced(x,'CERTIFICATE OF COMPLETION',W/2,334,7,'center');
   x.fillStyle='#5C6B7A'; x.font='600 24px '+NU; x.fillText('Trân trọng chứng nhận',W/2,412);
-  const name=(c.name||'HỌC VIÊN EQ GYM').toUpperCase(); let fs=78; x.font='700 '+fs+'px '+SG; while(x.measureText(name).width>W-320&&fs>34){ fs-=4; x.font='700 '+fs+'px '+SG; }
-  x.fillStyle='#0F1923'; x.fillText(name,W/2,500);
-  const nw=Math.min(W-320,x.measureText(name).width+90); x.fillStyle='#0FB89B'; rr(x,W/2-nw/2,522,nw,5,2.5); x.fill();
+  const name=(c.name||'HỌC VIÊN EQ GYM').toUpperCase(); let fs=80; x.font='700 '+fs+'px '+SG; while(x.measureText(name).width>W-320&&fs>34){ fs-=4; x.font='700 '+fs+'px '+SG; }
+  goldText(x,name,W/2,504,'700 '+fs+'px '+SG,'#1B1206');
+  const nw=Math.min(W-320,x.measureText(name).width); x.strokeStyle=goldGrad(x,W/2-nw/2-30,W/2+nw/2+30,528); x.lineWidth=2; x.beginPath(); x.moveTo(W/2-nw/2-30,528); x.lineTo(W/2-16,528); x.stroke(); x.beginPath(); x.moveTo(W/2+16,528); x.lineTo(W/2+nw/2+30,528); x.stroke();
+  x.save(); x.translate(W/2,528); x.rotate(Math.PI/4); x.fillStyle='#D9A72B'; rr(x,-6,-6,12,12,2); x.fill(); x.restore();
   x.fillStyle='#22303D'; x.font='600 26px '+NU; x.fillText('đã hoàn thành trọn vẹn 30 buổi luyện tập của hành trình',W/2,590);
   x.fillStyle='#0F1923'; x.font='700 32px '+SG; x.fillText('EQ GYM — Nâng cao cơ bắp cảm xúc',W/2,636);
   x.fillStyle='#5C6B7A'; x.font='600 19px '+NU; x.fillText('Thiết kế theo Mô hình Trí tuệ Cảm xúc Six Seconds · Hiểu mình · Làm chủ mình · Hoàn thiện mình',W/2,672);
   const stats=[['30/30','BUỔI TẬP'],[fmt(c.ep),'ĐIỂM EP'],[c.avg!=null?c.avg+'/100':'—','ĐIỂM TB COACH AI'],[String(c.practices||0),'BÀI THỰC HÀNH']];
   const cw=248,ch=86,gap=20,total=stats.length*cw+(stats.length-1)*gap; let sx=W/2-total/2; const sy=712;
-  stats.forEach(st=>{ rr(x,sx,sy,cw,ch,16); x.fillStyle='#fff'; x.fill(); x.strokeStyle='#E3E8EE'; x.lineWidth=2; x.stroke(); x.textAlign='center'; x.fillStyle='#0A6E5D'; x.font='700 30px '+SG; x.fillText(st[0],sx+cw/2,sy+40); x.fillStyle='#5C6B7A'; x.font='800 12px '+NU; spaced(x,st[1],sx+cw/2,sy+66,2,'center'); sx+=cw+gap; });
+  stats.forEach(st=>{ rr(x,sx,sy,cw,ch,16); x.fillStyle='#FFFBF0'; x.fill(); x.strokeStyle='#D9A72B'; x.lineWidth=1.4; x.stroke(); x.fillStyle=goldGrad(x,sx+18,sx+cw-18,sy+7); rr(x,sx+18,sy+7,cw-36,4,2); x.fill(); x.textAlign='center'; x.fillStyle='#0A6E5D'; x.font='700 30px '+SG; x.fillText(st[0],sx+cw/2,sy+44); x.fillStyle='#8A6A1E'; x.font='800 12px '+NU; spaced(x,st[1],sx+cw/2,sy+68,2,'center'); sx+=cw+gap; });
   x.textAlign='center'; x.fillStyle='#B27607'; x.font='800 14px '+NU; spaced(x,'DANH HIỆU',W/2,852,4,'center');
-  x.fillStyle='#0F1923'; x.font='700 34px '+SG; x.fillText('BẬC THẦY EQ',W/2,892);
-  drawSeal(x,W/2,988,58);
+  x.fillStyle='#0F1923'; x.font='700 36px '+SG; x.fillText('BẬC THẦY EQ',W/2,894);
+  const hw=x.measureText('BẬC THẦY EQ').width; laurelSprig(x,W/2-hw/2-26,914,false,'#7A9A5A'); laurelSprig(x,W/2+hw/2+26,914,true,'#7A9A5A');
+  drawSeal(x,W/2,1000,58);
   x.textAlign='left'; x.fillStyle='#8A97A5'; x.font='800 14px '+NU; spaced(x,'NGÀY HOÀN THÀNH',124,900,3,'left');
   x.fillStyle='#0F1923'; x.font='700 32px '+SG; x.fillText(certDate(c),124,946);
   x.fillStyle='#8A97A5'; x.font='600 15px '+NU; x.fillText('Chuỗi ngày tập dài nhất: '+(c.streak||0)+' ngày',124,980);
   x.textAlign='right'; x.fillStyle='#8A97A5'; x.font='800 14px '+NU; spaced(x,'CHUYÊN GIA HƯỚNG DẪN',W-124,900,3,'right');
-  x.strokeStyle='#0F1923'; x.lineWidth=2; x.beginPath(); x.moveTo(W-520,952); x.lineTo(W-124,952); x.stroke();
+  x.strokeStyle=goldGrad(x,W-520,W-124,952); x.lineWidth=2; x.beginPath(); x.moveTo(W-520,952); x.lineTo(W-124,952); x.stroke();
   x.fillStyle='#0F1923'; x.font='700 26px '+SG; x.fillText(CERT_SIGNER.name,W-124,986);
   x.fillStyle='#5C6B7A'; x.font='600 14px '+NU; x.fillText(CERT_SIGNER.title,W-124,1012);
   try{ UI.certImg=cv.toDataURL('image/png'); }catch(e){ UI.certImg=null; toast('Không tạo được ảnh chứng nhận'); }
