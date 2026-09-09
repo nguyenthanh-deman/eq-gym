@@ -1171,7 +1171,7 @@ function modalTreasure(){
 
 /* ===== 🎓 GIẤY CHỨNG NHẬN HOÀN THÀNH (tự tạo khi xong 30/30 buổi) ===== */
 function certId(){ const s=String((MEMBER&&MEMBER.code)||'LOCAL').replace(/[^A-Z0-9]/gi,'').toUpperCase(); const t=Date.now().toString(36).toUpperCase(); return 'EQG-'+new Date().getFullYear()+'-'+(s.slice(-4)||'XXXX')+'-'+t.slice(-5); }
-function makeCert(){ const sc=Object.values(S.scores||{}).map(x=>x&&x.score).filter(x=>typeof x==='number'); const avg=sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):null; return {id:certId(),name:((MEMBER&&MEMBER.name)||'').trim(),ts:Date.now(),ep:S.bounty||0,avg,streak:S.streak||0,practices:S.practices||0}; }
+function makeCert(){ const sc=Object.values(S.scores||{}).map(x=>x&&x.score).filter(x=>typeof x==='number'); const avg=sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):null; return {id:certId(),name:((MEMBER&&MEMBER.name)||'').trim(),ts:Date.now(),ep:S.bounty||0,avg,streak:Math.max(S.bestStreak||0,S.streak||0),practices:S.practices||0}; }
 function certEvent(){ if(!(CODE_MODE&&MEMBER&&S.cert)) return; if(MEMBER.role!=='member'&&MEMBER.role!=='guest') return; try{ api({action:'event',code:MEMBER.code,event:'certificate',detail:S.cert.id+' · '+(S.cert.name||'(chưa nhập tên)')}); }catch(e){} }
 function openCert(){ if(!S.cert) return; sfx('success'); UI.settingsOpen=false; UI.certOpen=true; UI.certImg=null; render(); renderCert(); }
 function closeCert(){ UI.certOpen=false; render(); }
@@ -1203,27 +1203,28 @@ async function renderCert(){
   x.drawImage(frame,0,0,W,H);
   const teal='#002c27';
   // Logo EQ GYM — khoảng trống trên đầu, giữa hoa văn góc trái và tiêu đề (icon + chữ cùng hàng, phụ đề bên dưới)
-  certLogo(x,300,42,34);
-  x.textBaseline='alphabetic'; x.textAlign='left'; x.font='800 22px '+SG;
-  x.fillStyle='#0F1923'; x.fillText('EQ', 346, 68);
-  x.fillStyle='#00807b'; x.fillText('GYM', 346+x.measureText('EQ ').width, 68);
-  x.fillStyle='#5C6B7A'; x.font='800 10px "Nunito",sans-serif';
-  certSpaced(x,'PHÒNG TẬP CẢM XÚC · HÀNH TRÌNH 30 NGÀY',300,92,1.4,'left');
+  certLogo(x,300,38,46);
+  x.textBaseline='alphabetic'; x.textAlign='left'; x.font='800 28px '+SG;
+  x.fillStyle='#0F1923'; x.fillText('EQ', 356, 71);
+  x.fillStyle='#00807b'; x.fillText('GYM', 356+x.measureText('EQ ').width, 71);
+  x.fillStyle='#5C6B7A'; x.font='800 11px "Nunito",sans-serif';
+  certSpaced(x,'PHÒNG TẬP CẢM XÚC · HÀNH TRÌNH 30 NGÀY',300,100,1.4,'left');
   x.textBaseline='middle'; x.textAlign='center';
   // Họ tên — giữa khoảng trắng dưới "Trân trọng chứng nhận"
-  const name=(c.name||'HỌC VIÊN EQ GYM').toUpperCase(); let fs=52; x.font='700 '+fs+'px '+SG;
-  while(x.measureText(name).width>W-260 && fs>24){ fs-=2; x.font='700 '+fs+'px '+SG; }
+  const name=(c.name||'HỌC VIÊN EQ GYM').toUpperCase(); let fs=64; x.font='700 '+fs+'px '+SG;
+  while(x.measureText(name).width>W-220 && fs>32){ fs-=2; x.font='700 '+fs+'px '+SG; }
   x.fillStyle=teal; x.fillText(name, W/2, 269*SC);
   // 4 số liệu — chính giữa nửa trên mỗi ô, nhãn có sẵn trong khung nằm ngay dưới
   const stats=[['30/30',217.55],[fmt(c.ep),403.25],[c.avg!=null?String(c.avg):'—',589.75],[String(c.practices||0),781.45]];
-  x.font='700 30px '+SG; x.fillStyle=teal;
-  stats.forEach(([val,cx])=>{ let f=30; x.font='700 '+f+'px '+SG; while(x.measureText(val).width>170 && f>16){ f-=2; x.font='700 '+f+'px '+SG; } x.fillText(val, cx*SC, 420.4*SC); });
-  // Ngày hoàn thành — ngay dưới nhãn "NGÀY HOÀN THÀNH" (căn trái, đúng lề nhãn)
+  stats.forEach(([val,cx])=>{ let f=38; x.font='700 '+f+'px '+SG; while(x.measureText(val).width>210 && f>20){ f-=2; x.font='700 '+f+'px '+SG; } x.fillStyle=teal; x.fillText(val, cx*SC, 420.4*SC); });
+  // Ngày hoàn thành + chuỗi ngày dài nhất — dưới nhãn "NGÀY HOÀN THÀNH" (căn trái, đúng lề nhãn)
   x.textAlign='left'; x.font='700 26px '+SG; x.fillStyle=teal;
   x.fillText(certDate(c), 80.9*SC, 552*SC);
+  x.font='600 15px "Nunito",sans-serif'; x.fillStyle='#5C6B7A';
+  x.fillText('Chuỗi ngày tập dài nhất: '+(c.streak||0)+' ngày', 80.9*SC, 552*SC+34);
   // Mã chứng nhận — góc trên phải, khoảng trống trước hoa văn góc
-  x.textAlign='right'; x.font='600 13px "Nunito",sans-serif'; x.fillStyle='#5C6B7A';
-  x.fillText('Mã chứng nhận · '+c.id, 818*SC, 26*SC);
+  x.textAlign='right'; x.font='600 16px "Nunito",sans-serif'; x.fillStyle='#5C6B7A';
+  x.fillText('Mã chứng nhận · '+c.id, 818*SC, 30*SC);
   try{ UI.certImg=cv.toDataURL('image/png'); }catch(e){ UI.certImg=null; toast('Không tạo được ảnh chứng nhận'); }
   if(UI.certOpen) render();
 }
