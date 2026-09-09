@@ -1202,29 +1202,29 @@ async function renderCert(){
   x.fillStyle='#fff'; x.fillRect(0,0,W,H);
   x.drawImage(frame,0,0,W,H);
   const teal='#002c27';
-  // Logo EQ GYM — khoảng trống trên đầu, giữa hoa văn góc trái và tiêu đề (icon + chữ cùng hàng, phụ đề bên dưới)
-  certLogo(x,300,32,62);
-  x.textBaseline='alphabetic'; x.textAlign='left'; x.font='800 36px '+SG;
-  x.fillStyle='#0F1923'; x.fillText('EQ', 372, 83);
-  x.fillStyle='#00807b'; x.fillText('GYM', 372+x.measureText('EQ ').width, 83);
-  x.fillStyle='#5C6B7A'; x.font='800 12px "Nunito",sans-serif';
-  certSpaced(x,'PHÒNG TẬP CẢM XÚC · HÀNH TRÌNH 30 NGÀY',300,108,1.4,'left');
+  // Logo EQ GYM — khoảng trống trên đầu, giữa hoa văn góc trái và tiêu đề (icon + chữ cùng hàng, phụ đề bên dưới; x1.5 + hạ thấp xuống)
+  certLogo(x,300,55,93);
+  x.textBaseline='alphabetic'; x.textAlign='left'; x.font='800 54px '+SG;
+  x.fillStyle='#0F1923'; x.fillText('EQ', 400, 121);
+  x.fillStyle='#00807b'; x.fillText('GYM', 400+x.measureText('EQ ').width, 121);
+  x.fillStyle='#5C6B7A'; x.font='800 18px "Nunito",sans-serif';
+  certSpaced(x,'PHÒNG TẬP CẢM XÚC · HÀNH TRÌNH 30 NGÀY',300,150,2,'left');
   x.textBaseline='middle'; x.textAlign='center';
   // Họ tên — giữa khoảng trắng dưới "Trân trọng chứng nhận"
   const name=(c.name||'HỌC VIÊN EQ GYM').toUpperCase(); let fs=64; x.font='700 '+fs+'px '+SG;
   while(x.measureText(name).width>W-220 && fs>32){ fs-=2; x.font='700 '+fs+'px '+SG; }
   x.fillStyle=teal; x.fillText(name, W/2, 269*SC);
-  // 4 số liệu — sát ngay trên nhãn có sẵn trong khung (không thả giữa khoảng trống phía trên ô)
+  // 4 số liệu — sát ngay trên nhãn có sẵn trong khung (x1.5, nhích lên một chút để không đụng nhãn)
   const stats=[['30/30',217.55],[fmt(c.ep),403.25],[c.avg!=null?String(c.avg):'—',589.75],[String(c.practices||0),781.45]];
-  stats.forEach(([val,cx])=>{ let f=38; x.font='700 '+f+'px '+SG; while(x.measureText(val).width>210 && f>20){ f-=2; x.font='700 '+f+'px '+SG; } x.fillStyle=teal; x.fillText(val, cx*SC, 420.4*SC+18); });
-  // Ngày hoàn thành + chuỗi ngày dài nhất — sát ngay dưới nhãn "NGÀY HOÀN THÀNH" (căn trái, đúng lề nhãn)
-  x.textAlign='left'; x.font='700 26px '+SG; x.fillStyle=teal;
-  x.fillText(certDate(c), 80.9*SC, 1082);
-  x.font='600 15px "Nunito",sans-serif'; x.fillStyle='#5C6B7A';
-  x.fillText('Chuỗi ngày tập dài nhất: '+(c.streak||0)+' ngày', 80.9*SC, 1114);
-  // Mã chứng nhận — góc trên phải, khoảng trống trước hoa văn góc
-  x.textAlign='right'; x.font='700 22px "Nunito",sans-serif'; x.fillStyle='#5C6B7A';
-  x.fillText('Mã chứng nhận · '+c.id, 818*SC, 34*SC);
+  stats.forEach(([val,cx])=>{ let f=57; x.font='700 '+f+'px '+SG; while(x.measureText(val).width>315 && f>30){ f-=2; x.font='700 '+f+'px '+SG; } x.fillStyle=teal; x.fillText(val, cx*SC, 845); });
+  // Ngày hoàn thành + chuỗi ngày dài nhất — sát ngay dưới nhãn "NGÀY HOÀN THÀNH" (căn trái, đúng lề nhãn; x1.5)
+  x.textAlign='left'; x.font='700 39px '+SG; x.fillStyle=teal;
+  x.fillText(certDate(c), 80.9*SC, 1090);
+  x.font='600 23px "Nunito",sans-serif'; x.fillStyle='#5C6B7A';
+  x.fillText('Chuỗi ngày tập dài nhất: '+(c.streak||0)+' ngày', 80.9*SC, 1132);
+  // Mã chứng nhận — góc trên phải, khoảng trống trước hoa văn góc (x1.5 + hạ thấp xuống)
+  x.textAlign='right'; x.font='700 33px "Nunito",sans-serif'; x.fillStyle='#5C6B7A';
+  x.fillText('Mã chứng nhận · '+c.id, 818*SC, 100);
   try{ UI.certImg=cv.toDataURL('image/png'); }catch(e){ UI.certImg=null; toast('Không tạo được ảnh chứng nhận'); }
   if(UI.certOpen) render();
 }
