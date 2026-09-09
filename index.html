@@ -1184,6 +1184,13 @@ const CERT_FRAME_SRC='assets/cert-frame.svg', CERT_VB_W=993, CERT_VB_H=651, CERT
 let _certFrameImg=null;
 function loadCertFrame(){ if(_certFrameImg) return Promise.resolve(_certFrameImg);
   return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>{ _certFrameImg=img; res(img); }; img.onerror=rej; img.src=CERT_FRAME_SRC; }); }
+function certRR(x,X,Y,w,h,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
+function certLogo(x,px,py,size){ const k=size/100; x.save(); x.translate(px,py); x.scale(k,k);
+  x.fillStyle='#0F1923'; [[10,18,9,64],[10,18,32,9],[10,45,26,9],[10,73,32,9]].forEach(r=>{ certRR(x,r[0],r[1],r[2],r[3],4.5); x.fill(); });
+  x.strokeStyle='#0FB89B'; x.lineWidth=9; x.beginPath(); x.arc(70,50,22,0,Math.PI*2); x.stroke();
+  x.fillStyle='#E85B5B'; x.beginPath(); x.arc(70,50,5,0,Math.PI*2); x.fill();
+  x.save(); x.translate(78,64); x.rotate(Math.PI/4); x.fillStyle='#0FB89B'; certRR(x,0,0,19,7,3.5); x.fill(); x.restore();
+  x.restore(); }
 async function renderCert(){
   const c=S.cert; if(!c) return;
   let frame; try{ frame=await loadCertFrame(); }catch(e){ UI.certImg=null; toast('Không tải được khung chứng nhận'); return; }
@@ -1194,6 +1201,11 @@ async function renderCert(){
   x.fillStyle='#fff'; x.fillRect(0,0,W,H);
   x.drawImage(frame,0,0,W,H);
   const teal='#002c27';
+  // Logo EQ GYM — khoảng trống trên đầu, giữa hoa văn góc trái và tiêu đề
+  certLogo(x,150*SC,29*SC,34);
+  x.textBaseline='alphabetic'; x.textAlign='left'; x.font='800 22px '+SG;
+  x.fillStyle='#0F1923'; x.fillText('EQ', 192*SC, 64*SC);
+  x.fillStyle='#00807b'; x.fillText('GYM', 192*SC+x.measureText('EQ ').width, 64*SC);
   x.textBaseline='middle'; x.textAlign='center';
   // Họ tên — giữa khoảng trắng dưới "Trân trọng chứng nhận"
   const name=(c.name||'HỌC VIÊN EQ GYM').toUpperCase(); let fs=52; x.font='700 '+fs+'px '+SG;
