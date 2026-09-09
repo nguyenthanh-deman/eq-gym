@@ -78,11 +78,18 @@ hoặc bấm **⬇ Tải / In workbook PDF** để in ra viết tay.
 
 ## 🎓 Giấy chứng nhận hoàn thành
 
-Khi học viên hoàn thành **Bài 29** (đủ 30/30 buổi), app tự tạo **Giấy chứng nhận** (ảnh PNG vẽ bằng canvas,
-1600×1131, phong cách khung vàng — hào quang tỏa sau huy chương, dải lụa, chữ dát vàng viền mảnh, laurel hai bên
-danh hiệu) với: họ tên, mã chứng nhận `EQG-<năm>-<mã>-<hash>`, ngày hoàn thành, điểm EP, điểm TB Coach AI,
-số bài thực hành, danh hiệu *Bậc Thầy EQ*, chữ ký chuyên gia (`CERT_SIGNER` trong `index.html`).
-Đổi màu/kiểu: sửa các hàm `goldGrad`, `glow`, `sunburst`, `drawSeal`, `laurelSprig`, `cornerFlourish` trong `index.html`.
+Khi học viên hoàn thành **Bài 29** (đủ 30/30 buổi), app tự tạo **Giấy chứng nhận** dạng ảnh PNG.
+Khung nền dùng **đúng file thiết kế gốc** `assets/cert-frame.svg` (bản Canva của studio — viền hoa văn góc,
+huy chương dải lụa, nhánh nguyệt quế, chữ ký "Hana Đoàn Thị Hải Loan"...); app chỉ vẽ đè lên trên các trường
+**động**: họ tên, 4 số liệu (buổi tập/điểm EP/điểm TB Coach AI/bài thực hành), ngày hoàn thành, và mã chứng
+nhận `EQG-<năm>-<mã>-<hash>` (góc trên phải, phục vụ tra cứu — không có trong bản thiết kế gốc).
+
+- **Đổi thiết kế khung**: sửa/thay `assets/cert-frame.svg` trực tiếp trong Canva rồi export lại đè file cũ —
+  không cần sửa code. Nếu bố cục đổi (dịch chuyển tên/số liệu/ngày), phải đo lại toạ độ thật bằng cách nạp SVG
+  vào DOM và gọi `getBoundingClientRect()` trên từng phần tử (xem hằng số toạ độ trong `renderCert()`,
+  đơn vị viewBox 993×651 nhân với `CERT_SCALE`) — không áng chừng từ ảnh chụp màn hình, vì file có tới
+  1441 nhóm `<g>` lồng nhau, đoán tay rất dễ sai vài chục px.
+- File SVG nặng ~1.3MB (chứa ảnh mask nhúng base64), chỉ tải 1 lần rồi trình duyệt cache lại.
 
 - Hiện ngay sau rương thưởng cuối cùng; xem lại ở thẻ vàng trên trang chủ, huy hiệu *Bậc Thầy EQ*, hoặc mục Tài khoản.
 - Học viên sửa được **tên in trên chứng nhận**, tải PNG hoặc chia sẻ (Web Share API).
