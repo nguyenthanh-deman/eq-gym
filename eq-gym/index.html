@@ -47,8 +47,8 @@ button{font-family:inherit}
    ☁️ CẤU HÌNH BACKEND (SUPABASE) — dán 2 giá trị để bật tài khoản/Premium
    Trống = chế độ local (chạy như thường, mở khóa tất cả). Xem docs/SETUP-SUPABASE.md
    ================================================================ */
-const SUPA_URL="";
-const SUPA_ANON="";
+const SUPA_URL="https://dpzlwlaekhfmorckukfm.supabase.co";
+const SUPA_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwemx3bGFla2hmbW9yY2t1a2ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NTk3NDMsImV4cCI6MjEwNTAzNTc0M30.BCSyd379ekTdrY3UKR9UCI72XGU6-xI02RldLSEYCIw";
 const BACKEND=!!(SUPA_URL && SUPA_ANON && window.supabase);
 let sb=BACKEND ? window.supabase.createClient(SUPA_URL,SUPA_ANON) : null;
 let AUTH=null;
@@ -58,7 +58,7 @@ let AUTH=null;
    Dán URL web app (app-backend.gs) vào APP_BACKEND. Trống = chế độ mở (local).
    Xem SETUP-APP-BACKEND.md
    ================================================================ */
-const APP_BACKEND="https://script.google.com/macros/s/AKfycbzhO5x55bAfRpFtRtoGniFkR3EBK908wW0KAJD-1DNolGPH-Rz2ecCujcE-zhF_qL4/exec";
+const APP_BACKEND=""; // Đã chuyển sang Supabase (SUPA_URL/SUPA_ANON ở trên) — không dùng GAS/mã học viên nữa
 const CODE_MODE=!!APP_BACKEND;
 /* 🌐 CHẾ ĐỘ MỞ THỬ (public): true = ai cũng vào được, KHÔNG cần mã đăng nhập.
    Dùng chung 1 mã khách (GUEST_CODE) để Coach AI vẫn chạy. Đổi false để bật lại đăng nhập bằng mã. */
@@ -83,11 +83,16 @@ async function api(payload,tries){
   }
   throw lastErr;
 }
-function aiReady(){ return (CODE_MODE && MEMBER) || !!getKey(); }
+function aiReady(){ return (BACKEND && AUTH && isPremium()) || !!getKey(); }
 async function geminiFetch(body){
-  if(CODE_MODE && MEMBER){ const d=await api({action:'ai',code:MEMBER.code,body}); if(!d||!d.ok||!d.gemini) throw new Error((d&&d.error)||'AI proxy lỗi'); return d.gemini; }
+  if(BACKEND && AUTH && isPremium()){
+    const {data,error}=await sb.functions.invoke('ai',{body});
+    if(error) throw error;
+    if(!data || data.error) throw new Error((data&&data.error)||'AI proxy lỗi');
+    return data;
+  }
   const key=getKey(); if(!key) throw new Error('no key');
-  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(!r.ok) throw new Error('HTTP '+r.status); return await r.json();
 }
 let _psT=null;
@@ -169,8 +174,11 @@ function emailGate(){
     <p style="text-align:center;margin:16px 0 0"><a onclick="UI.adminLogin=true;UI.loginErr='';render()" style="color:#7FA39B;font-size:11.5px;font-weight:700;cursor:pointer">Quản trị viên? Đăng nhập tại đây →</a></p>
   </div>`;
 }
-function openRank(){ sfx('tap'); UI.view='rank'; UI.rankData=null; render(); loadRank(); startRankRefresh(); window.scrollTo(0,0); }
-async function loadRank(){ try{ const d=await api({action:'leaderboard',code:MEMBER.code,session:MEMBER.session}); if(handleKick(d)) return; if(d&&d.ok){ UI.rankData=d; render(); } }catch(e){} }
+function openRank(){ sfx('tap'); if(BACKEND&&!isPremium()){ UI.premOpen=true; render(); return; } UI.view='rank'; UI.rankData=null; render(); loadRank(); startRankRefresh(); window.scrollTo(0,0); }
+async function loadRank(){ if(!BACKEND) return; try{ const {data,error}=await sb.rpc('leaderboard',{limit_n:50}); if(error) throw error;
+  const top=(data||[]).map(r=>({rank:r.rank,name:r.display_name,points:r.points,user_id:r.user_id}));
+  const mine=AUTH?top.find(r=>r.user_id===AUTH.id)||null:null;
+  UI.rankData={top,me:mine,total:top.length}; render(); }catch(e){ console.warn('rank',e); } }
 function openAdminCode(){ sfx('tap'); UI.settingsOpen=false; UI.view='admincode'; UI.newCode=null; UI.members=undefined; UI.adminTab='members'; render(); loadMembers(); window.scrollTo(0,0); }
 function adminTabTo(t){ UI.adminTab=t; render(); if(t==='activity') loadActivity(); else loadMembers(); }
 async function loadActivity(){ try{ const d=await api({action:'activity',admin:MEMBER.code}); if(d&&d.ok){ UI.activity=d.items; render(); } }catch(e){} }
@@ -250,9 +258,9 @@ function viewAdminCode(){
 }
 
 /* ===== Thanh toán / cộng đồng (Premium) ===== */
-const BANK={ bank_code:"", account_no:"", account_name:"" };
-const COMMUNITY_URL="";
-const PREMIUM_PRICE=999000;
+const BANK={ bank_code:"SEAB", account_no:"00500000120722", account_name:"DOAN THI HAI LOAN" };
+const COMMUNITY_URL="https://facebook.com/groups/eqgym";
+const PREMIUM_PRICE=499000;
 
 /* ================================================================
    🎬 ĐỒNG BỘ VIDEO TỪ GOOGLE DRIVE (tuỳ chọn) — xem docs/SETUP-DRIVE-VIDEO.md
@@ -471,7 +479,7 @@ function videoFor(n){
   if(v.mp4 && UI.mp4Ok!==false) return {type:'mp4',src:v.mp4};
   return {type:'none'};
 }
-function nav(v){ sfx('tap'); UI.view=v; if(v==='quiz') render(); else render(); if(v!=='chat') window.scrollTo(0,0); else scrollChatDown(); }
+function nav(v){ sfx('tap'); if(v==='chat'&&BACKEND&&!isPremium()){ UI.premOpen=true; render(); return; } UI.view=v; if(v==='quiz') render(); else render(); if(v!=='chat') window.scrollTo(0,0); else scrollChatDown(); }
 
 /* ===== 🔥 CHUỖI NGÀY + NGÀY NGHỈ PHÉP (streak + freeze) ===== */
 function dayStr(off){ return new Date(Date.now()+(off||0)*86400000).toDateString(); }
@@ -742,9 +750,8 @@ function acctHtml(){
   if(!BACKEND) return `<div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 14px;font-size:12.5px;margin-bottom:12px;color:#5C6B7A;line-height:1.6;font-weight:600">☁️ Backend chưa cấu hình — app đang chạy <b style="color:#0F1923">chế độ local</b> (lưu trên máy này, mở khóa toàn bộ). Chủ app xem <b style="color:#0A6E5D">docs/SETUP-SUPABASE.md</b> để bật tài khoản & Premium.</div>`;
   if(AUTH){ const prem=isPremium();
     return `<div style="margin-bottom:14px"><div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700">👤 <b style="color:#0A6E5D">${esc(AUTH.email||'Học viên')}</b> <span style="display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:6px;${prem?'background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff':'background:#E3E8EE;color:#5C6B7A'}">${prem?'★ PREMIUM':'Miễn phí'}</span>${prem&&AUTH.premium_until?`<div style="font-size:11px;color:#5C6B7A;margin-top:5px;font-weight:600">Premium đến ${new Date(AUTH.premium_until).toLocaleDateString('vi-VN')}</div>`:''}</div>
-      ${!prem?`<button onclick="UI.settingsOpen=false;showPremium()" style="width:100%;margin-top:10px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px">🚀 Nâng cấp Premium 999k/năm</button>`:''}
+      ${!prem?`<button onclick="UI.settingsOpen=false;showPremium()" style="width:100%;margin-top:10px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px">🚀 Nâng cấp Premium ${fmt(PREMIUM_PRICE)}đ/năm</button>`:''}
       ${prem&&COMMUNITY_URL?`<a href="${COMMUNITY_URL}" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;background:#fff;color:#0F1923;min-height:46px">👥 Vào cộng đồng EQ GYM</a>`:''}
-      ${prem?`<button onclick="UI.settingsOpen=false;openBookClaim()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px">🎁 Nhận sách EQ Workbook (50 suất đầu)</button>`:''}
       ${isAdmin()?`<button onclick="UI.settingsOpen=false;openAdmin()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px">🛡️ Trang Admin duyệt thanh toán</button>`:''}
       <button onclick="signOut()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:46px">Đăng xuất</button></div>`;
   }
@@ -767,9 +774,8 @@ function showPremium(){ UI.premOpen=true; render(); }
 function closePremium(){ UI.premOpen=false; render(); }
 function modalPremium(){
   return `<div onclick="if(event.target===this)closePremium()" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:75;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">
-    <div style="background:linear-gradient(155deg,#0F1923,#0A6E5D);border-radius:18px;padding:18px 16px;color:#fff"><h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:19px;color:#fff">EQ GYM Premium</h3><div style="font-size:26px;font-weight:900;font-family:'Space Grotesk';margin:6px 0">999.000đ <span style="font-size:13px;color:#7FA39B;font-weight:600">/ năm</span></div>
-    <ul style="margin:10px 0;padding-left:2px;list-style:none">${['Mở khóa toàn bộ 30 buổi tập & luyện tập','Coach AI chấm điểm 4 trụ & tình huống không giới hạn','Tham gia cộng đồng rèn luyện EQ GYM','Tặng sách EQ Workbook (50 thành viên đầu tiên)'].map(x=>`<li style="font-size:13.5px;padding:4px 0;display:flex;gap:8px"><span>✅</span><span>${x}</span></li>`).join('')}</ul>
-    <div style="font-size:12px;color:#ffcf8f;background:rgba(232,147,10,.16);border:1px dashed #E0930A;border-radius:10px;padding:8px 11px">🎁 Ưu đãi có hạn: 50 thành viên đầu tiên được tặng sách EQ Workbook.</div></div>
+    <div style="background:linear-gradient(155deg,#0F1923,#0A6E5D);border-radius:18px;padding:18px 16px;color:#fff"><h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:19px;color:#fff">EQ GYM Premium</h3><div style="font-size:26px;font-weight:900;font-family:'Space Grotesk';margin:6px 0">${fmt(PREMIUM_PRICE)}đ <span style="font-size:13px;color:#7FA39B;font-weight:600">/ năm</span></div>
+    <ul style="margin:10px 0;padding-left:2px;list-style:none">${['Mở khóa toàn bộ 30 buổi tập & luyện tập','Workbook thực hành mỗi ngày ngay trong app','Coach AI chấm điểm 4 trụ & tình huống không giới hạn','Bảng thi đua & tham gia cộng đồng rèn luyện EQ GYM'].map(x=>`<li style="font-size:13.5px;padding:4px 0;display:flex;gap:8px"><span>✅</span><span>${x}</span></li>`).join('')}</ul></div>
     <button onclick="startCheckout()" style="width:100%;margin-top:14px;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:50px">Nâng cấp ngay</button>
     <button onclick="closePremium()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:48px">Để sau</button></div></div>`;
 }
@@ -789,9 +795,9 @@ function modalPay(){
       <p id="paymsg" style="font-size:11.5px;color:#5C6B7A;margin:8px 0 0;font-weight:600"></p>`;
   } else {
     const code=(AUTH&&AUTH.pay_code)||('EQGYM-'+(AUTH?AUTH.id.slice(0,6).toUpperCase():'XXXX')); const qr=vietQRUrl(code);
-    inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">💳 Nâng cấp Premium — 999.000đ</h3><p style="color:#5C6B7A;font-size:12.5px;margin:0;line-height:1.6;font-weight:600">Chuyển khoản đúng số tiền, <b style="color:#0F1923">nội dung ghi: ${esc(code)}</b>. Sau khi chuyển, bấm "Tôi đã chuyển khoản" để admin duyệt kích hoạt Premium.</p>
+    inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">💳 Nâng cấp Premium — ${fmt(PREMIUM_PRICE)}đ</h3><p style="color:#5C6B7A;font-size:12.5px;margin:0;line-height:1.6;font-weight:600">Chuyển khoản đúng số tiền, <b style="color:#0F1923">nội dung ghi: ${esc(code)}</b>. Sau khi chuyển, bấm "Tôi đã chuyển khoản" để admin duyệt kích hoạt Premium.</p>
       ${qr?`<div style="text-align:center;margin:12px 0"><img src="${qr}" alt="QR" style="width:230px;max-width:80%;border-radius:12px;border:1px solid #E3E8EE;background:#fff;padding:6px"></div>`:`<div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px;font-size:13px;margin-top:10px;color:#5C6B7A;font-weight:600">Chủ app chưa cấu hình tài khoản ngân hàng. Vui lòng liên hệ để được hướng dẫn thanh toán.</div>`}
-      <div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-size:12.5px;margin-top:6px;font-weight:600">Nội dung CK: <b>${esc(code)}</b> · Số tiền: <b>999.000đ</b></div>
+      <div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-size:12.5px;margin-top:6px;font-weight:600">Nội dung CK: <b>${esc(code)}</b> · Số tiền: <b>${fmt(PREMIUM_PRICE)}đ</b></div>
       <button onclick="submitPayment('${esc(code)}')" style="width:100%;margin-top:12px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px">Tôi đã chuyển khoản ✅</button>
       <button onclick="closePay()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px">Đóng</button>
       <p id="paymsg" style="font-size:11.5px;color:#5C6B7A;margin:8px 0 0;font-weight:600"></p>`;
@@ -1120,7 +1126,7 @@ function fixedUI(){
 }
 function sheet(inner){ return `<div onclick="if(event.target===this){UI.settingsOpen=false;UI.musicOpen=false;UI.streakOpen=false;render()}" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:70;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">${inner}</div></div>`; }
 function sheetSettings(){
-  if(OPEN_MODE && (!MEMBER||MEMBER.role!=='admin')){
+  if(CODE_MODE && OPEN_MODE && (!MEMBER||MEMBER.role!=='admin')){
     const m=MEMBER||{};
     return sheet(`<h3 style="margin:2px 0 10px;font-family:'Space Grotesk';font-size:17px;font-weight:700">Tài khoản dùng thử 🌱</h3>
       <div style="background:linear-gradient(150deg,#0F1923,#0A8C77 130%);border-radius:16px;padding:15px 16px;color:#fff">

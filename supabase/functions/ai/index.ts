@@ -14,7 +14,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const GEMINI_KEY = Deno.env.get("GEMINI_KEY")!;
-const MODEL = "gemini-2.0-flash";
+// Thử lần lượt — gemini-2.0-flash/2.5-flash cũ đã bị chặn ("no longer available to new
+// users") tính tới 2026-09-15. flash-lite-latest là alias tự trỏ model mới nhất của Google,
+// giữ cuối danh sách để không cần sửa tay khi Google đổi tên model lần nữa.
+const MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-lite-latest"];
 
 const hits = new Map<string, { n: number; t: number }>();
 const LIMIT = 40;             // request / cửa sổ
@@ -49,14 +52,20 @@ Deno.serve(async (req) => {
     if (!h || now - h.t > WINDOW) hits.set(user.id, { n: 1, t: now });
     else { h.n++; if (h.n > LIMIT) return json({ error: "rate_limited" }, 429); }
 
-    // Chuyển tiếp body sang Gemini
+    // Chuyển tiếp body sang Gemini — thử lần lượt các model, rơi xuống model sau khi hết quota (429)
     const body = await req.json();
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_KEY}`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
-    );
-    const data = await r.json();
-    return json(data, r.status);
+    let lastData: unknown = { error: "no model tried" };
+    let lastStatus = 500;
+    for (const model of MODELS) {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+      );
+      const data = await r.json();
+      if (r.ok) return json(data, r.status);
+      lastData = data; lastStatus = r.status;
+    }
+    return json(lastData, lastStatus);
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
