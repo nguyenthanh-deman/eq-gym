@@ -4,36 +4,19 @@
 # Mặc định CHẶN tất cả ở gốc, chỉ cho phép đúng những gì app cần để chạy trên GitHub Pages.
 # Mục đích: khi tạo/đẩy lên repo MỚI của khách, không kéo theo tài liệu nội bộ
 # (docs/ kế hoạch, tools/ script dev, supabase/ hệ thống không dùng nữa).
+#
+# App thật nằm trong /eq-gym/ (tiền tố URL theo yêu cầu: app.evolve.vn/eq-gym/,
+# landing app.evolve.vn/eq-gym/dangky/). 2 file index.html ở gốc chỉ là trang
+# chuyển hướng — phòng ai đã lỡ lưu/chia sẻ link app.evolve.vn/ hoặc /dangky/
+# từ lúc app còn chạy ở gốc.
 /*
 !/.gitignore
-
-# App chính
+!/CNAME
 !/index.html
-!/manifest.json
-!/favicon.svg
-!/icon-192.png
-!/icon-512.png
-!/apple-touch-icon.png
-
-# Backend Google Apps Script (nguồn — đẩy lên Apps Script bằng clasp)
-!/app-backend.gs
-
-# Tài liệu cần cho người vận hành app
-!/README.md
-!/SETUP-APP-BACKEND.md
-
-# Nội dung khoá học
-!/assets/
-!/comics/
-!/workbook/
-!/videos/
-!/music/
-
-# Landing page đăng ký
 !/dangky/
-
-# Trang chuyển hướng cho link cũ /eq-gym/... (đã lỡ chia sẻ qua Zalo) -> domain gốc /
+!/dangky/index.html
 !/eq-gym/
+!/eq-gym/**
 
 # Không đẩy: tools/ (script dựng workbook, chỉ chạy trên máy dev có Word),
 # supabase/ (hệ backend cũ không còn dùng), docs/ (tài liệu/kế hoạch nội bộ)

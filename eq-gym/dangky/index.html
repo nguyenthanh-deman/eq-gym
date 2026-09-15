@@ -2,13 +2,321 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="refresh" content="0; url=/dangky/">
-<link rel="canonical" href="/dangky/">
-<title>Đang chuyển hướng…</title>
-<script>location.replace('/dangky/' + location.search);</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0F1923">
+<title>App EQ GYM — Rèn luyện cơ bắp cảm xúc trong 30 ngày</title>
+<meta name="description" content="App EQ GYM đóng gói trọn chương trình 30 ngày: tự chọn giờ luyện tập, AI chấm điểm & phản hồi từng bài, workbook thực hành mỗi ngày. Đăng ký 499K.">
+<meta property="og:title" content="App EQ GYM — Rèn luyện cơ bắp cảm xúc">
+<meta property="og:description" content="Tự luyện EQ 30 ngày cùng app: workbook mỗi ngày, AI chấm điểm, group rèn luyện kín cùng chuyên gia. Đăng ký 499K.">
+<meta property="og:image" content="assets/lp-hero.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230FB89B'/%3E%3Crect x='18' y='24' width='9' height='52' rx='4' fill='%23fff'/%3E%3Crect x='18' y='24' width='28' height='9' rx='4' fill='%23fff'/%3E%3Crect x='18' y='46' width='22' height='9' rx='4' fill='%23fff'/%3E%3Crect x='18' y='67' width='28' height='9' rx='4' fill='%23fff'/%3E%3Ccircle cx='70' cy='52' r='18' fill='none' stroke='%23fff' stroke-width='8'/%3E%3Ccircle cx='70' cy='52' r='4' fill='%23E85B5B'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#E9EDF2}
+body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;color:#0F1923;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box}
+a{color:#0A6E5D;text-decoration:none}
+a:hover{color:#0FB89B}
+input{font-family:'Nunito',sans-serif}
+input:focus{outline:none;border-color:#0FB89B !important}
+html{scroll-behavior:smooth}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(232,91,91,.4)}50%{box-shadow:0 0 0 12px rgba(232,91,91,0)}}
+.aud{display:flex;align-items:center;gap:10px;border:1px solid #E3E8EE;background:#F5F8FA;border-radius:12px;padding:12px 13px;cursor:pointer;min-height:46px}
+.aud input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.aud .dot{width:18px;height:18px;border-radius:50%;border:2px solid #C7D0D9;display:flex;align-items:center;justify-content:center;flex:0 0 18px}
+.aud .dot i{width:9px;height:9px;border-radius:50%;background:transparent;display:block}
+.aud input:checked ~ .dot{border-color:#0FB89B}
+.aud input:checked ~ .dot i{background:#0FB89B}
+.aud:has(input:checked){border-color:#0FB89B;background:#EAFBF6}
+.faq-a{display:none;font-size:13px;color:#3D4C5A;line-height:1.7;font-weight:600;margin:0;padding:0 15px 14px;animation:fade .2s}
+.faq.open .faq-a{display:block}
+.faq.open .chev{transform:none}
+</style>
 </head>
 <body>
-<p>Đang chuyển tới <a href="/dangky/">trang đăng ký EQ GYM</a>…</p>
+<div style="min-height:100vh;max-width:520px;margin:0 auto;position:relative;background:#F5F8FA;box-shadow:0 0 40px rgba(15,25,35,.1);padding-bottom:calc(env(safe-area-inset-bottom) + 84px)">
+
+  <!-- marquee -->
+  <div style="background:#0F1923;color:#fff;overflow:hidden;white-space:nowrap;padding:8px 0">
+    <div style="display:inline-block;animation:marquee 22s linear infinite;font-family:'Space Grotesk';font-size:11px;font-weight:700;letter-spacing:1px">
+      <span style="color:#0FB89B">APP EQ GYM — 30 NGÀY RÈN LUYỆN CẢM XÚC</span> — Workbook mỗi ngày · <span style="color:#E0930A">AI chấm điểm</span> · Group rèn luyện kín cùng chuyên gia · Đăng ký 499K · &nbsp;
+      <span style="color:#0FB89B">APP EQ GYM — 30 NGÀY RÈN LUYỆN CẢM XÚC</span> — Workbook mỗi ngày · <span style="color:#E0930A">AI chấm điểm</span> · Group rèn luyện kín cùng chuyên gia · Đăng ký 499K · &nbsp;
+    </div>
+  </div>
+
+  <!-- header -->
+  <div style="position:sticky;top:0;z-index:50;background:rgba(245,248,250,.95);backdrop-filter:blur(12px);border-bottom:1px solid #E3E8EE;display:flex;align-items:center;gap:10px;padding:10px 16px">
+    <svg width="32" height="32" viewBox="0 0 100 100"><rect x="10" y="18" width="9" height="64" rx="4.5" fill="#0F1923"></rect><rect x="10" y="18" width="32" height="9" rx="4.5" fill="#0F1923"></rect><rect x="10" y="45" width="26" height="9" rx="4.5" fill="#0F1923"></rect><rect x="10" y="73" width="32" height="9" rx="4.5" fill="#0F1923"></rect><circle cx="70" cy="50" r="22" fill="none" stroke="#0FB89B" stroke-width="9"></circle><circle cx="70" cy="50" r="5" fill="#E85B5B"></circle><rect x="78" y="64" width="19" height="7" rx="3.5" transform="rotate(45 78 64)" fill="#0FB89B"></rect></svg>
+    <div style="flex:1;font-family:'Space Grotesk';font-weight:700;font-size:16px">EQ <span style="color:#0FB89B">GYM</span></div>
+  </div>
+
+  <!-- HERO -->
+  <div style="position:relative;background:#0F1923">
+    <img src="assets/lp-hero.jpg" alt="Áp lực trong phòng họp đêm" loading="lazy" style="width:100%;display:block;opacity:.5">
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,25,35,.25),rgba(15,25,35,.92) 78%)"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;padding:20px">
+      <h1 style="font-family:'Space Grotesk';color:#fff;font-size:27px;line-height:1.28;margin:0;font-weight:700;letter-spacing:-.3px">Bạn không thiếu năng lực.<br>Bạn thiếu <span style="color:#E0930A">6 giây bình tĩnh</span>.</h1>
+      <p style="color:#B9C6D4;font-size:14px;line-height:1.65;margin:10px 0 0;font-weight:600">Nóng giận trong họp. Cáu với người thân. Quyết định sai khi áp lực. <b style="color:#fff">Không phải vì bạn kém — vì "cơ bắp cảm xúc" của bạn chưa từng được luyện.</b></p>
+      <a href="#dangky" style="display:block;text-align:center;margin-top:16px;background:linear-gradient(135deg,#E85B5B,#C74848);color:#fff;font-size:14.5px;font-weight:800;padding:16px;border-radius:14px;animation:pulse 2s infinite">Đăng kí ngay chương trình EQ GYM</a>
+    </div>
+  </div>
+
+  <!-- PAIN -->
+  <div style="padding:34px 20px 0">
+    <div style="font-family:'Space Grotesk';font-size:14px;font-weight:700;letter-spacing:2px;color:#E85B5B">CẢNH NÀY QUEN KHÔNG?</div>
+    <h2 style="font-family:'Space Grotesk';font-size:22px;line-height:1.35;margin:8px 0 0;font-weight:700">Bạn biết là không nên...<br>nhưng đúng lúc ấy — bạn vẫn làm.</h2>
+  </div>
+  <img src="assets/lp-pain.jpg" alt="Tin nhắn lúc 23:47, cánh cửa sau giờ làm, phòng họp đêm" loading="lazy" style="width:calc(100% - 32px);display:block;border-radius:16px;margin:16px auto 0;border:1px solid #E3E8EE">
+  <div style="padding:14px 20px 0;display:flex;flex-direction:column;gap:10px">
+    <div style="background:#fff;border:1px solid #E3E8EE;border-left:4px solid #E85B5B;border-radius:14px;padding:13px 15px"><b style="font-size:13.5px;display:block;font-weight:800">23:47</b><span style="font-size:13px;color:#3D4C5A;line-height:1.6;font-weight:600">Cái tin nhắn gửi đi trong cơn nóng — sáng hôm sau chỉ muốn thu hồi. Nhưng người kia đã đọc rồi.</span></div>
+    <div style="background:#fff;border:1px solid #E3E8EE;border-left:4px solid #E85B5B;border-radius:14px;padding:13px 15px"><b style="font-size:13.5px;display:block;font-weight:800">Sau giờ làm</b><span style="font-size:13px;color:#3D4C5A;line-height:1.6;font-weight:600">Cả ngày nhịn sếp, nhịn khách. Người lãnh trọn cơn cáu... lại là người mình thương nhất.</span></div>
+    <div style="background:#fff;border:1px solid #E3E8EE;border-left:4px solid #E85B5B;border-radius:14px;padding:13px 15px"><b style="font-size:13.5px;display:block;font-weight:800">Và tệ nhất</b><span style="font-size:13px;color:#3D4C5A;line-height:1.6;font-weight:600">Bạn nhận ra mình lặp lại đúng một kịch bản — cùng cơn giận, cùng nỗi lo, cùng lời hứa "lần sau sẽ khác".</span></div>
+    <div style="border-left:3px solid #0FB89B;padding:6px 0 6px 13px;color:#3D4C5A;font-style:italic;font-size:13.5px;line-height:1.65;margin-top:4px">"Chúng ta đang sống trong thời đại béo phì kiến thức nhưng teo tóp năng lực." — đọc thêm 10 cuốn sách không làm bạn khác đi. Luyện tập mới làm được.</div>
+  </div>
+
+  <!-- WHY NOW -->
+  <div style="padding:36px 20px 0">
+    <div style="font-family:'Space Grotesk';font-size:11px;font-weight:700;letter-spacing:2px;color:#0A6E5D">TẠI SAO PHẢI LUYỆN EQ NGAY BÂY GIỜ</div>
+    <h2 style="font-family:'Space Grotesk';font-size:22px;line-height:1.35;margin:8px 0 14px;font-weight:700">EQ không còn là "kỹ năng mềm" — nó là kỹ năng sống còn</h2>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:14px 16px"><b style="font-family:'Space Grotesk';font-size:15px;color:#0A6E5D;display:block">Gấp 22 lần</b><span style="font-size:13px;color:#3D4C5A;line-height:1.65;font-weight:600;display:block;margin-top:4px">Tổ chức xem EQ là ưu tiên hàng đầu có hiệu suất cao gấp 22 lần ở cả 4 KPI: giữ chân nhân viên, năng suất, tập trung khách hàng, thành công tương lai.</span></div>
+      <div style="background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:14px 16px"><b style="font-family:'Space Grotesk';font-size:15px;color:#0A6E5D;display:block">Top 10 kỹ năng 2025–2030</b><span style="font-size:13px;color:#3D4C5A;line-height:1.65;font-weight:600;display:block;margin-top:4px">Theo Báo cáo Tương lai Nghề nghiệp của Diễn đàn Kinh tế Thế giới, EQ nằm trong top 10 — và 9 kỹ năng còn lại đều liên quan trực tiếp đến EQ.</span></div>
+      <div style="background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:14px 16px"><b style="font-family:'Space Grotesk';font-size:15px;color:#0A6E5D;display:block">Google, American Express...</b><span style="font-size:13px;color:#3D4C5A;line-height:1.65;font-weight:600;display:block;margin-top:4px">Từ tập đoàn đến trường học, bệnh viện, cơ quan chính phủ khắp thế giới đang đưa EQ vào chương trình bắt buộc.</span></div>
+    </div>
+  </div>
+
+  <!-- PIVOT -->
+  <div style="margin-top:36px;background:#0F1923;position:relative">
+    <img src="assets/lp-brain.jpg" alt="Não là cơ bắp — có luyện là lớn" loading="lazy" style="width:100%;display:block">
+    <div style="padding:0 20px 26px;margin-top:-56px;position:relative;background:linear-gradient(180deg,transparent,#0F1923 42px)">
+      <div style="font-family:'Space Grotesk';font-size:11px;font-weight:700;letter-spacing:2px;color:#0FB89B;padding-top:70px">TIN TỐT CHO BẠN</div>
+      <h2 style="font-family:'Space Grotesk';font-size:22px;line-height:1.35;margin:8px 0 0;font-weight:700;color:#fff">EQ không phải tính trời sinh.<br>Nó là <span style="color:#E0930A">CƠ BẮP</span>.</h2>
+      <p style="color:#B9C6D4;font-size:13.5px;line-height:1.7;margin:10px 0 0;font-weight:600">Bạn đến phòng fitness để tập cho cơ thể. Bạn đến <b style="color:#fff">EQ GYM</b> để tập cho cảm xúc. Không phải để "biết thêm" — mà để <b style="color:#fff">sống khác đi từng ngày</b> qua vòng lặp:</p>
+      <div style="margin-top:12px;background:rgba(15,184,155,.12);border:1px solid rgba(15,184,155,.4);border-radius:13px;padding:12px;text-align:center;font-family:'Space Grotesk';font-size:13.5px;font-weight:700;color:#0FB89B">Hiểu → Thực hành → Phản chiếu → Lặp lại</div>
+    </div>
+  </div>
+
+  <!-- OFFER -->
+  <div style="padding:36px 20px 0">
+    <div style="font-family:'Space Grotesk';font-size:11px;font-weight:700;letter-spacing:2px;color:#0A6E5D">APP EQ GYM</div>
+    <h2 style="font-family:'Space Grotesk';font-size:22px;line-height:1.35;margin:8px 0 14px;font-weight:700">App EQ GYM là gì?</h2>
+    <p style="font-size:14px;color:#3D4C5A;line-height:1.75;font-weight:600;margin:0">Phiên bản đóng gói toàn bộ nội dung của chương trình EQ GYM 30 ngày. Bạn có thể chủ động chọn giờ luyện tập. App có hệ thống chấm điểm, phản hồi qua mỗi bài học của bạn, đồng thời hỗ trợ nhắc nhở bạn duy trì thói quen luyện tập.</p>
+  </div>
+
+  <!-- EXPERT -->
+  <div style="padding:36px 20px 0">
+    <div style="font-family:'Space Grotesk';font-size:11px;font-weight:700;letter-spacing:2px;color:#0A6E5D">CHUYÊN GIA ĐIỀU PHỐI</div>
+    <h2 style="font-family:'Space Grotesk';font-size:22px;line-height:1.35;margin:8px 0 14px;font-weight:700">Hana Đoàn Thị Hải Loan<br><span style="font-size:14px;color:#5C6B7A;font-weight:700">EQ Insight Certified Facilitator</span></h2>
+    <img src="assets/expert2.jpg" alt="Chuyên gia Hana Đoàn Thị Hải Loan — Six Seconds Network Leader 2026" loading="lazy" style="width:100%;display:block;border-radius:18px;border:1px solid #E3E8EE">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+      <div style="background:#fff;border:1px solid #E3E8EE;border-radius:14px;padding:13px 14px"><b style="font-family:'Space Grotesk';font-size:13px;color:#0A6E5D">Six Seconds</b><p style="font-size:12px;color:#3D4C5A;line-height:1.6;margin:4px 0 0;font-weight:600">Network Leader 2026 · 4 chứng nhận quốc tế: UEQ, EQPC, Brain Profiler, Insights TTT.</p></div>
+      <div style="background:#fff;border:1px solid #E3E8EE;border-radius:14px;padding:13px 14px"><b style="font-family:'Space Grotesk';font-size:13px;color:#0A6E5D">Thực chiến</b><p style="font-size:12px;color:#3D4C5A;line-height:1.6;margin:4px 0 0;font-weight:600">CEO-Founder TOHO Engineering · cựu GĐ Kinh doanh châu Á Taiho Japan · cựu CEO ActionCOACH Hà Nội West.</p></div>
+    </div>
+    <p style="font-size:13px;color:#3D4C5A;line-height:1.7;margin:12px 0 0;font-weight:600;font-style:italic">Khao khát: "Phụng sự để góp phần tạo nên thế giới thịnh vượng và hạnh phúc." — 15 năm kinh doanh thực chiến + chứng nhận quốc tế về EQ: người hiểu áp lực của bạn từ cả hai phía.</p>
+  </div>
+
+  <!-- ROADMAP -->
+  <div style="padding:36px 20px 0">
+    <div style="font-family:'Space Grotesk';font-size:11px;font-weight:700;letter-spacing:2px;color:#0A6E5D">LỘ TRÌNH 30 NGÀY</div>
+    <h2 style="font-family:'Space Grotesk';font-size:22px;line-height:1.35;margin:8px 0 14px;font-weight:700">Từng chặng, từng lớp cơ được xây</h2>
+    <div style="display:flex;flex-direction:column;gap:8px;position:relative;padding-left:8px">
+      <div style="position:absolute;left:29px;top:10px;bottom:10px;border-left:2px dashed #D7DEE6"></div>
+      <div id="roadmap"></div>
+    </div>
+  </div>
+
+  <!-- OUTCOMES -->
+  <div style="margin-top:36px;background:#0F1923;padding:30px 20px">
+    <div style="font-family:'Space Grotesk';font-size:11px;font-weight:700;letter-spacing:2px;color:#0FB89B">SAU 30 NGÀY BẠN CÓ GÌ</div>
+    <h2 style="font-family:'Space Grotesk';font-size:22px;line-height:1.35;margin:8px 0 14px;font-weight:700;color:#fff">10 thứ ở lại với bạn mãi mãi</h2>
+    <div id="outcomes" style="display:flex;flex-direction:column;gap:7px"></div>
+  </div>
+
+  <!-- WHAT YOU GET -->
+  <div style="padding:36px 20px 0">
+    <div style="font-family:'Space Grotesk';font-size:11px;font-weight:700;letter-spacing:2px;color:#0A6E5D">QUYỀN LỢI</div>
+    <h2 style="font-family:'Space Grotesk';font-size:22px;line-height:1.35;margin:8px 0 14px;font-weight:700">Bạn sẽ nhận được những gì:</h2>
+    <div style="background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:16px;display:flex;flex-direction:column;gap:11px">
+      <div style="display:flex;gap:9px;font-size:14px;color:#22303D;line-height:1.6;font-weight:700"><span style="width:8px;height:8px;border-radius:50%;background:#0FB89B;margin-top:7px;flex:0 0 8px"></span><span>App EQ GYM 30 ngày</span></div>
+      <div style="display:flex;gap:9px;font-size:14px;color:#22303D;line-height:1.6;font-weight:700"><span style="width:8px;height:8px;border-radius:50%;background:#0FB89B;margin-top:7px;flex:0 0 8px"></span><span>Workbook thực hành mỗi ngày</span></div>
+      <div style="display:flex;gap:9px;font-size:14px;color:#22303D;line-height:1.6;font-weight:700"><span style="width:8px;height:8px;border-radius:50%;background:#0FB89B;margin-top:7px;flex:0 0 8px"></span><span>AI chấm điểm</span></div>
+      <div style="display:flex;gap:9px;font-size:14px;color:#22303D;line-height:1.6;font-weight:700"><span style="width:8px;height:8px;border-radius:50%;background:#0FB89B;margin-top:7px;flex:0 0 8px"></span><span>Group rèn luyện kín với sự đồng hành của chuyên gia</span></div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div id="dangky" style="padding:36px 20px 0">
+    <div style="font-family:'Space Grotesk';font-size:11px;font-weight:700;letter-spacing:2px;color:#E85B5B">ĐĂNG KÍ APP EQ GYM</div>
+    <h2 style="font-family:'Space Grotesk';font-size:22px;line-height:1.35;margin:8px 0 14px;font-weight:700">Bắt đầu luyện tập ngay hôm nay</h2>
+    <div id="formCard" style="background:#fff;border:1px solid #E3E8EE;border-radius:18px;padding:18px 16px">
+      <form id="leadform" onsubmit="return submitLead(event)">
+        <input id="f_name" type="text" placeholder="Họ và tên *" required autocomplete="name" style="width:100%;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;padding:14px;font-size:16px;font-weight:600">
+        <input id="f_phone" type="tel" placeholder="Số điện thoại (Zalo) *" required inputmode="tel" autocomplete="tel" style="width:100%;margin-top:10px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;padding:14px;font-size:16px;font-weight:600">
+        <input id="f_promo" type="text" placeholder="Mã giảm giá (nếu có)" autocomplete="off" style="width:100%;margin-top:10px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;padding:14px;font-size:16px;font-weight:600">
+        <button type="submit" style="width:100%;margin-top:14px;border:none;border-radius:14px;padding:16px;font-size:14.5px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#E85B5B,#C74848);color:#fff;min-height:52px;font-family:inherit">ĐĂNG KÝ &amp; NHẬN HƯỚNG DẪN CHUYỂN KHOẢN →</button>
+        <p style="text-align:center;font-size:10.5px;color:#5C6B7A;font-weight:700;margin:10px 0 0">🔒 Đăng ký đổ thẳng về hệ thống EQ GYM · Bảo mật theo Nghị định 13/2023/NĐ-CP</p>
+      </form>
+    </div>
+    <div id="ckCard" style="display:none;background:#fff;border:1px solid #B6EDDF;border-radius:18px;padding:18px 16px;animation:fade .3s">
+      <h3 style="font-family:'Space Grotesk';font-size:16px;margin:0;font-weight:700;color:#0A6E5D">✓ Đăng ký thành công! Bước cuối: chuyển khoản giữ chỗ</h3>
+      <img src="assets/bank.png" alt="VietQR SeABank — DOAN THI HAI LOAN" loading="lazy" style="width:100%;max-width:280px;display:block;margin:14px auto;border-radius:14px;border:1px solid #E3E8EE">
+      <div style="text-align:center">
+        <b style="font-size:14px;font-weight:800">DOAN THI HAI LOAN</b> <span style="font-size:12.5px;color:#5C6B7A;font-weight:700">· SeABank</span>
+        <div style="font-family:'Space Grotesk';font-size:20px;font-weight:700;margin-top:4px;letter-spacing:1px">0050 0000 120 722</div>
+        <button id="btnStk" onclick="copyStk()" style="margin-top:8px;border:1px solid #B6EDDF;background:#EAFBF6;color:#0A6E5D;border-radius:11px;padding:10px 16px;font-size:12.5px;font-weight:800;cursor:pointer;min-height:42px;font-family:inherit">Copy số tài khoản</button>
+        <p style="font-size:13px;font-weight:700;margin:12px 0 0">Nội dung CK: <b id="ckText" style="color:#E85B5B"></b></p>
+        <button id="btnCk" onclick="copyCk()" style="margin-top:8px;border:1px solid #B6EDDF;background:#EAFBF6;color:#0A6E5D;border-radius:11px;padding:10px 16px;font-size:12.5px;font-weight:800;cursor:pointer;min-height:42px;font-family:inherit">Copy nội dung CK</button>
+      </div>
+      <div id="proofBox" style="display:none;margin-top:16px;border-top:1px dashed #B6EDDF;padding-top:14px">
+        <b style="font-size:13.5px;font-weight:800;color:#0A6E5D">Đã chuyển khoản? Gửi ảnh biên lai để xác nhận nhanh</b>
+        <p style="font-size:11.5px;color:#5C6B7A;font-weight:600;margin:4px 0 10px;line-height:1.55">Chụp màn hình biên lai CK và gửi lên đây — hệ thống lưu tự động và báo admin ngay, bạn được xác nhận nhanh hơn.</p>
+        <input id="proofFile" type="file" accept="image/*" style="display:none" onchange="onProof(this)">
+        <button id="proofPick" type="button" onclick="document.getElementById('proofFile').click()" style="width:100%;border:1px dashed #0FB89B;background:#EAFBF6;color:#0A6E5D;border-radius:13px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;min-height:50px;font-family:inherit">📎 Chọn ảnh biên lai chuyển khoản</button>
+        <img id="proofPrev" style="display:none;width:100%;max-width:220px;border-radius:12px;margin:10px auto 0;border:1px solid #E3E8EE">
+        <button id="proofSend" type="button" onclick="sendProof()" style="display:none;width:100%;margin-top:10px;border:none;border-radius:13px;padding:14px;font-size:13.5px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:50px;font-family:inherit">Gửi xác nhận CK →</button>
+        <p id="proofMsg" style="display:none;font-size:12.5px;font-weight:700;text-align:center;margin:10px 0 0;line-height:1.55"></p>
+        <div id="codeResult"></div>
+      </div>
+      <p style="font-size:12px;color:#3D4C5A;font-weight:600;line-height:1.65;margin:14px 0 0">Phí trọn gói: <b>499.000đ</b>. Sau khi CK, chờ xác nhận qua Zalo và vào group: <b><a href="https://facebook.com/groups/eqgym" target="_blank" rel="noopener">facebook.com/groups/eqgym</a></b></p>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div style="padding:36px 20px 0">
+    <div style="font-family:'Space Grotesk';font-size:11px;font-weight:700;letter-spacing:2px;color:#0A6E5D">CÂU HỎI THƯỜNG GẶP</div>
+    <h2 style="font-family:'Space Grotesk';font-size:22px;line-height:1.35;margin:8px 0 14px;font-weight:700">Trước khi bạn quyết định</h2>
+    <div id="faqs" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
+  <!-- FINAL CTA -->
+  <div style="margin-top:36px;background:linear-gradient(150deg,#0F1923,#123A34 60%,#0A8C77 130%);padding:34px 20px;text-align:center">
+    <svg width="52" height="52" viewBox="0 0 100 100" style="margin:0 auto;display:block"><rect x="10" y="18" width="9" height="64" rx="4.5" fill="#fff"></rect><rect x="10" y="18" width="32" height="9" rx="4.5" fill="#fff"></rect><rect x="10" y="45" width="26" height="9" rx="4.5" fill="#fff"></rect><rect x="10" y="73" width="32" height="9" rx="4.5" fill="#fff"></rect><circle cx="70" cy="50" r="22" fill="none" stroke="#0FB89B" stroke-width="9"></circle><circle cx="70" cy="50" r="5" fill="#E85B5B"></circle><rect x="78" y="64" width="19" height="7" rx="3.5" transform="rotate(45 78 64)" fill="#0FB89B"></rect></svg>
+    <h2 style="font-family:'Space Grotesk';font-size:24px;line-height:1.35;margin:14px 0 0;font-weight:700;color:#fff">30 ngày nữa, bạn là ai?</h2>
+    <p style="color:#B9C6D4;font-size:14px;line-height:1.7;margin:10px 0 0;font-weight:600">Người cũ với những cơn hối hận cũ — hay người biết <b style="color:#E0930A">dừng lại 6 giây và chọn đúng</b>?</p>
+    <p style="color:#7FA39B;font-size:12.5px;font-style:italic;margin:12px 0 0;font-weight:600">"EQ GYM không giúp bạn biết thêm — mà giúp bạn sống khác đi từng ngày."</p>
+    <a href="#dangky" style="display:block;text-align:center;margin-top:18px;background:linear-gradient(135deg,#E85B5B,#C74848);color:#fff;font-size:14.5px;font-weight:800;padding:17px;border-radius:14px">ĐĂNG KÝ App EQ GYM</a>
+    <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;justify-content:center">
+      <span style="font-size:10.5px;color:#B9C6D4;font-weight:700;background:rgba(255,255,255,.08);border-radius:8px;padding:5px 9px">Học lại free trọn đời</span>
+    </div>
+  </div>
+
+  <!-- footer -->
+  <div style="padding:22px 20px 30px;text-align:center">
+    <b style="font-family:'Space Grotesk';font-size:13px">EQ GYM — Rèn luyện cơ bắp cảm xúc</b>
+    <p style="font-size:11.5px;color:#5C6B7A;font-weight:600;line-height:1.7;margin:6px 0 0">Chuyên gia điều phối: Hana Đoàn Thị Hải Loan — EQ Insight Certified Facilitator · Six Seconds Network Leader 2026<br>Group cộng đồng: facebook.com/groups/eqgym</p>
+    <p style="font-size:10px;color:#8A97A5;font-weight:600;margin:10px 0 0">* Số liệu: nghiên cứu tổ chức ưu tiên EQ (Six Seconds) · Future of Jobs Report, World Economic Forum.</p>
+    <p style="font-size:11px;font-weight:700;margin:10px 0 0"><a href="https://eq-gym-hai-trinh.netlify.app/privacy">Chính sách bảo mật</a> · <a href="https://eq-gym-hai-trinh.netlify.app/terms">Điều khoản</a> · <a href="https://eq-gym-hai-trinh.netlify.app/refund">Chính sách hoàn phí</a></p>
+  </div>
+
+  <!-- sticky bottom CTA -->
+  <div style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;background:rgba(255,255,255,.97);backdrop-filter:blur(14px);border-top:1px solid #E3E8EE;display:flex;gap:10px;padding:10px 16px calc(env(safe-area-inset-bottom) + 10px);z-index:60;align-items:center">
+    <div style="flex:1;min-width:0"><b style="font-family:'Space Grotesk';font-size:16px;display:block">499.000đ</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">trọn gói app EQ GYM</span></div>
+    <a href="#dangky" style="background:linear-gradient(135deg,#E85B5B,#C74848);color:#fff;font-size:13.5px;font-weight:800;padding:14px 20px;border-radius:13px;white-space:nowrap;min-height:48px;display:flex;align-items:center">Đăng ký</a>
+  </div>
+</div>
+
+<script>
+/* ===== Roadmap + Outcomes + FAQ render ===== */
+var WEEKS=[["1","Tổng quan","Khởi động lộ trình — EQ là gì và vì sao phải LUYỆN."],["2","EQ & Thành công","Khám phá mối quan hệ giữa EQ và kết quả công việc, cuộc sống."],["3","Mô hình Six Seconds","Hiểu mình – Chọn mình – Hoàn thiện mình & 8 năng lực EQ."],["4","Hiểu mình","Thấu suốt cảm nhận & hành động — biến cảm xúc thành đồng minh."],["5","Chọn mình","Hướng dẫn lựa chọn phản ứng thay vì bị cảm xúc chọn thay."],["6","Phản hồi có chủ đích","Rèn kỹ năng phản hồi thay vì phản ứng vô thức."],["7","Kết nối","Kết nối với người khác và với mục tiêu của chính mình."],["8","Sống với EQ","Đưa EQ vào cuộc sống và công việc — thành lối sống."]];
+document.getElementById("roadmap").innerHTML=WEEKS.map(function(w){return '<div style="display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid #E3E8EE;border-radius:14px;padding:12px 14px;position:relative;z-index:2;margin-bottom:8px"><div style="width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:#fff;border:3px solid #0FB89B;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\';font-weight:700;font-size:14px">'+w[0]+'</div><div><b style="font-size:13.5px;font-weight:800;display:block">'+w[1]+'</b><span style="font-size:12.5px;color:#3D4C5A;line-height:1.55;font-weight:600">'+w[2]+'</span></div></div>';}).join("");
+
+var OUTCOMES=["Hiểu điều đang thật sự diễn ra bên trong mình","Làm chủ phản ứng, không bị cảm xúc kéo đi","Phá mô thức lặp lại cùng một vấn đề","Điều tiết cảm xúc không cần kìm nén","Quyết định sáng suốt trong áp lực","Quan hệ sâu sắc hơn bằng thấu cảm","Động lực từ bên trong, không chờ hoàn cảnh","Hiểu não bộ tạo cảm xúc để luyện đúng","Kết nối lựa chọn hằng ngày với ý nghĩa sống",'Hệ thống luyện tập trọn đời cho "cơ bắp cảm xúc"'];
+document.getElementById("outcomes").innerHTML=OUTCOMES.map(function(t){return '<div style="display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:#DCE6EF;line-height:1.6;font-weight:600"><span style="color:#0FB89B;font-weight:800;flex:0 0 auto">✓</span><span>'+t+'</span></div>';}).join("");
+
+var FAQS=[["Có được học trọn đời không?","Có. Chỉ cần đăng ký 1 lần, bạn sở hữu trọn bộ 30 ngày của app vĩnh viễn — học lại bao nhiêu lần tuỳ thích, không giới hạn thời gian, không phí gia hạn."],["Lỡ quên 1 ngày thì sao?","App tặng sẵn 1 \"Ngày nghỉ phép\" — lỡ quên đúng 1 ngày thì chuỗi luyện tập tự động được giữ nguyên, không mất công sức tích luỹ. Quên liên tiếp từ 2 ngày thì chuỗi mới reset, nhưng vẫn có 48 giờ để \"sửa chuỗi\" lại."],["Có chi phí ẩn gì không?","Không. 499K là trọn gói — đủ 30 ngày nội dung, workbook, AI chấm điểm và group. Không phí phát sinh, không thu thêm theo tháng."],["Chuyển khoản xong thì làm gì tiếp?","Bấm gửi luôn ảnh biên lai ngay trên trang để được xác nhận nhanh nhất, hoặc chờ xác nhận qua Zalo. Sau khi xác nhận, bạn nhận mã học viên để đăng nhập app và bắt đầu Ngày 1 ngay."],["Chương trình này khác gì EQ thông thường?","Hầu hết nội dung EQ ngoài kia dừng ở việc cho bạn BIẾT. EQ GYM bắt bạn LUYỆN: mỗi ngày một bài thực hành thật, AI chấm điểm và phản hồi riêng cho từng câu trả lời của bạn — không phải trắc nghiệm chung chung."]];
+document.getElementById("faqs").innerHTML=FAQS.map(function(f,i){return '<div class="faq'+(i===0?' open':'')+'" style="background:#fff;border:1px solid #E3E8EE;border-radius:14px;overflow:hidden"><div onclick="toggleFaq(this)" style="display:flex;justify-content:space-between;gap:10px;padding:14px 15px;cursor:pointer;align-items:center;min-height:48px"><b style="font-size:13.5px;font-weight:800;line-height:1.45">'+f[0]+'</b><span class="chev" style="color:#0FB89B;font-weight:800;flex:0 0 auto;font-size:18px">'+(i===0?'−':'+')+'</span></div><p class="faq-a">'+f[1]+'</p></div>';}).join("");
+function toggleFaq(el){var c=el.parentElement;var open=c.classList.toggle("open");c.querySelector(".chev").textContent=open?"−":"+";}
+
+/* ===== Backend Google Apps Script (lưu Drive + Sheet + báo Telegram) =====
+   Dán URL web app sau khi deploy Apps Script (xem dangky/apps-script.gs + SETUP-BACKEND.md).
+   Để trống = chỉ gửi Google Form như cũ, ẩn phần upload bằng chứng CK. */
+var BACKEND="https://script.google.com/macros/s/AKfycbzhO5x55bAfRpFtRtoGniFkR3EBK908wW0KAJD-1DNolGPH-Rz2ecCujcE-zhF_qL4/exec";
+var APP_URL="https://app.evolve.vn/eq-gym/";
+var GFORM="https://docs.google.com/forms/d/e/1FAIpQLSd1K3ysNKqtV9yzLGmZdVnhv1j6gHoX_zu74zhdM7_IlD_EwA/formResponse";
+
+/* Chuẩn hoá SĐT: bỏ ký tự thừa, +84/84 -> 0 */
+function normPhone(p){ var d=String(p||"").replace(/\D/g,""); if(d.indexOf("84")===0 && d.length>=11) d="0"+d.slice(2); return d; }
+
+function submitLead(ev){
+  ev.preventDefault();
+  var name=(document.getElementById("f_name").value||"").trim();
+  var phone=(document.getElementById("f_phone").value||"").trim();
+  var promo=(document.getElementById("f_promo").value||"").trim();
+  if(!name || phone.replace(/[^0-9]/g,"").length<8){ alert("Vui lòng điền họ tên và số điện thoại hợp lệ nhé!"); return false; }
+  var np=normPhone(phone);
+  var dt="Đăng ký App EQ GYM"+(promo?" · Mã KM: "+promo:"");
+  // 1) Google Form (hệ thống sheet cũ)
+  var data=new URLSearchParams();
+  data.append("entry.2118394569",name);
+  data.append("entry.1856728674",dt);
+  data.append("entry.1304235428",phone);
+  data.append("entry.1317998704","Chưa");
+  fetch(GFORM,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:data.toString()}).catch(function(){});
+  // 2) Backend Drive + Telegram
+  window._lead={name:name,phone:np,promo:promo,doituong:dt};
+  if(BACKEND){ fetch(BACKEND,{method:"POST",mode:"no-cors",body:JSON.stringify({type:"lead",name:name,phone:np,promo:promo,doituong:dt})}).catch(function(){}); }
+  // Nội dung CK: ngắn gọn, không dấu (khớp với hướng dẫn ở FAQ — xem ghi chú bàn giao)
+  window._ck="EQGYM03 "+np;
+  document.getElementById("ckText").textContent=window._ck;
+  document.getElementById("formCard").style.display="none";
+  document.getElementById("ckCard").style.display="block";
+  document.getElementById("ckCard").scrollIntoView({behavior:"smooth",block:"start"});
+  return false;
+}
+function copyStk(){ try{navigator.clipboard.writeText("00500000120722");}catch(e){} var b=document.getElementById("btnStk"); b.textContent="✓ Đã copy STK"; setTimeout(function(){b.textContent="Copy số tài khoản";},1600); }
+function copyCk(){ try{navigator.clipboard.writeText(window._ck||"");}catch(e){} var b=document.getElementById("btnCk"); b.textContent="✓ Đã copy nội dung"; setTimeout(function(){b.textContent="Copy nội dung CK";},1600); }
+
+/* ===== Upload bằng chứng chuyển khoản ===== */
+var _proofData=null;
+function onProof(inp){
+  var f=inp.files&&inp.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){ compressImg(r.result,function(durl){ _proofData=durl; var p=document.getElementById("proofPrev"); p.src=durl; p.style.display="block"; document.getElementById("proofSend").style.display="block"; }); };
+  r.readAsDataURL(f);
+}
+function compressImg(durl,cb){
+  var img=new Image();
+  img.onload=function(){ var max=1280,w=img.width,h=img.height; if(w>max||h>max){ if(w>h){ h=Math.round(h*max/w); w=max; } else { w=Math.round(w*max/h); h=max; } } var c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(img,0,0,w,h); try{ cb(c.toDataURL("image/jpeg",0.82)); }catch(e){ cb(durl); } };
+  img.onerror=function(){ cb(durl); };
+  img.src=durl;
+}
+function sendProof(){
+  var btn=document.getElementById("proofSend"), msg=document.getElementById("proofMsg");
+  if(!_proofData){ return; }
+  if(!BACKEND){ msg.style.display="block"; msg.style.color="#B27607"; msg.textContent="Vui lòng gửi ảnh biên lai vào nhóm để được xác nhận nhé!"; return; }
+  btn.disabled=true; btn.textContent="Đang gửi & cấp mã...";
+  var L=window._lead||{};
+  var payload={action:"proof",name:L.name||"",phone:L.phone||"",promo:L.promo||"",ck:window._ck||"",image:_proofData};
+  fetch(BACKEND,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)})
+    .then(function(r){ return r.json(); })
+    .then(function(d){ showCode(d&&d.code?d:null); })
+    .catch(function(){ showCode(null); });
+}
+function showCode(d){
+  var pk=document.getElementById("proofPick"); if(pk) pk.style.display="none";
+  var sd=document.getElementById("proofSend"); if(sd) sd.style.display="none";
+  var pv=document.getElementById("proofPrev"); if(pv) pv.style.opacity=".55";
+  var box=document.getElementById("codeResult");
+  if(d&&d.code){
+    window._memberCode=d.code;
+    box.innerHTML='<div style="margin-top:14px;background:linear-gradient(150deg,#0F1923,#0A8C77 130%);border-radius:16px;padding:18px 16px;text-align:center;color:#fff">'
+      +'<div style="font-size:11px;color:#7FA39B;font-weight:800;letter-spacing:1.5px">🎉 MÃ HỌC VIÊN CỦA BẠN</div>'
+      +'<div style="font-family:\'Space Grotesk\',sans-serif;font-size:30px;font-weight:700;letter-spacing:4px;margin:6px 0">'+d.code+'</div>'
+      +'<button onclick="copyMember()" id="btnMem" style="border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;border-radius:11px;padding:10px 20px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit">Copy mã</button>'
+      +'</div>'
+      +'<a href="'+APP_URL+'" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:12px;background:linear-gradient(135deg,#E85B5B,#C74848);color:#fff;font-size:14.5px;font-weight:800;padding:16px;border-radius:14px;text-decoration:none">Mở app EQ GYM & dán mã →</a>'
+      +'<div style="margin-top:12px;background:#EAFBF6;border:1px solid #B6EDDF;border-radius:12px;padding:13px 15px;font-size:12.5px;color:#22303D;font-weight:600;line-height:1.75"><b style="color:#0A6E5D">Cách vào học:</b><br>1. Bấm <b>Copy mã</b> ở trên.<br>2. Bấm <b>Mở app EQ GYM</b>.<br>3. Dán mã vào ô đăng nhập → bắt đầu luyện tập ngay.<br><span style="color:#5C6B7A">📌 Lưu lại mã này để đăng nhập những lần sau nhé!</span></div>';
+    box.scrollIntoView({behavior:"smooth",block:"center"});
+  } else {
+    box.innerHTML='<p style="margin-top:12px;font-size:12.5px;font-weight:700;color:#0A6E5D;text-align:center;line-height:1.65">✓ Đã gửi bằng chứng CK! Admin sẽ xác nhận và gửi mã học viên cho bạn qua Zalo trong ít phút.</p>';
+  }
+}
+function copyMember(){ try{navigator.clipboard.writeText(window._memberCode||"");}catch(e){} var b=document.getElementById("btnMem"); if(b){ b.textContent="✓ Đã copy mã"; setTimeout(function(){b.textContent="Copy mã";},1600);} }
+/* Hiện phần upload chỉ khi backend đã cấu hình */
+if(BACKEND){ var pb=document.getElementById("proofBox"); if(pb) pb.style.display="block"; }
+</script>
 </body>
 </html>
