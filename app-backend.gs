@@ -11,13 +11,17 @@
  */
 
 var CONFIG = {
-  GEMINI_API_KEY:     '',   // key Gemini dùng chung (ẩn) — "AIza..."
-  ADMIN_SECRET:       '',   // mã đăng nhập admin — chuỗi khó đoán
+  GEMINI_API_KEYS:    [''],  // hết quota key này tự chuyển key kế tiếp trong mảng — KHÔNG commit key thật vào đây, chỉ điền trực tiếp trên script.google.com hoặc qua clasp (xem ghi chú bàn giao)
+  ADMIN_SECRET:       '',   // mã đăng nhập admin — chuỗi khó đoán — KHÔNG commit giá trị thật vào đây, chỉ điền trên bản đã deploy
   TELEGRAM_BOT_TOKEN: '',   // báo Telegram (từ @BotFather)
   TELEGRAM_CHAT_ID:   '',   // id nhóm Telegram (số âm)
   DRIVE_FOLDER_ID:    '',   // thư mục Drive lưu ảnh CK — trống = tự tạo
   SHEET_ID:           '',   // Google Sheet dữ liệu — trống = tự tạo
-  GEMINI_MODEL:       'gemini-2.5-flash'   // gemini-2.0-flash đã bị Google ngừng cho key mới
+  // Thử lần lượt theo thứ tự — model đầu ưu tiên, hết quota (429) mới rơi xuống model sau.
+  // Đã test thật với key ngày 2026-09-15: gemini-2.5-flash/2.0-flash/2.5-pro bị chặn ("no longer
+  // available to new users") — dùng dòng gemini-3.x. gemini-flash-lite-latest là alias tự trỏ
+  // sang model mới nhất của Google, giữ lại cuối danh sách để không cần sửa tay khi model đổi tên lần nữa.
+  GEMINI_MODELS: ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest']
 };
 
 var MEMBERS = 'Members';
@@ -132,13 +136,29 @@ function findByEmail(email) {
   var a = members(); for (var i = 0; i < a.length; i++) if (String(a[i].email || '').trim().toLowerCase() === email) return a[i];
   return null;
 }
+/* Gọi Gemini, tự xoay vòng qua các model/key trong CONFIG khi gặp lỗi (đặc biệt 429 hết quota).
+   Ưu tiên model đứng trước trong danh sách; với mỗi model thử hết các key rồi mới rơi xuống model sau. */
 function apiAI(d) {
   if (!authorized(d.code)) return { ok: false, error: 'unauthorized' };
-  if (!CONFIG.GEMINI_API_KEY) return { ok: false, error: 'Server chưa cấu hình Gemini key' };
-  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + CONFIG.GEMINI_MODEL + ':generateContent?key=' + encodeURIComponent(CONFIG.GEMINI_API_KEY);
-  var res = UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', payload: JSON.stringify(d.body || {}), muteHttpExceptions: true });
-  var json; try { json = JSON.parse(res.getContentText()); } catch (e) { json = { error: 'bad gemini response' }; }
-  return { ok: true, gemini: json };
+  var keys = (CONFIG.GEMINI_API_KEYS || []).filter(function (k) { return !!k; });
+  var models = (CONFIG.GEMINI_MODELS || []).filter(function (m) { return !!m; });
+  if (!keys.length || !models.length) return { ok: false, error: 'Server chưa cấu hình Gemini key/model' };
+  var lastErr = 'không rõ lỗi', payload = JSON.stringify(d.body || {});
+  for (var mi = 0; mi < models.length; mi++) {
+    for (var ki = 0; ki < keys.length; ki++) {
+      var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + models[mi] + ':generateContent?key=' + encodeURIComponent(keys[ki]);
+      var res;
+      try { res = UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', payload: payload, muteHttpExceptions: true }); }
+      catch (e) { lastErr = String(e); continue; }
+      var code = res.getResponseCode();
+      var json; try { json = JSON.parse(res.getContentText()); } catch (e) { json = null; }
+      if (code === 200 && json) return { ok: true, gemini: json, model: models[mi] };
+      lastErr = (json && json.error && json.error.message) || ('HTTP ' + code);
+      // 429 = hết quota key/model này -> thử tổ hợp kế tiếp. Lỗi khác (key sai, request lỗi...)
+      // cũng thử tiếp luôn thay vì bỏ cuộc ngay, phòng trường hợp 1 key bị revoke/sai.
+    }
+  }
+  return { ok: false, error: 'Tất cả Gemini key/model đều lỗi: ' + lastErr };
 }
 function apiSync(d) {
   var m = findByCode(d.code); if (!m) return { ok: false, error: 'unauthorized' };

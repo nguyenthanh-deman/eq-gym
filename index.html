@@ -66,7 +66,23 @@ const OPEN_MODE=true;
 const GUEST_CODE="EQ4VEEB";
 let MEMBER=null; // {code,name,points,role}
 function memberCode(){ try{ return localStorage.getItem('eqgym_code')||''; }catch(e){ return ''; } }
-async function api(payload){ const r=await fetch(APP_BACKEND,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)}); return await r.json(); }
+/* Gọi backend Apps Script — tự thử lại tối đa 3 lần (có giãn cách) và có timeout mỗi lần gọi.
+   Lý do: test tải thực tế cho thấy Apps Script/Drive thỉnh thoảng trả lỗi tạm thời (kể cả với
+   chỉ vài request cùng lúc) hoặc treo không phản hồi — không retry/timeout thì UI bị đứng im. */
+async function api(payload,tries){
+  tries=tries||3; let lastErr;
+  for(let i=0;i<tries;i++){
+    let to;
+    try{
+      const ctrl=new AbortController(); to=setTimeout(()=>ctrl.abort(),12000);
+      const r=await fetch(APP_BACKEND,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload),signal:ctrl.signal});
+      clearTimeout(to);
+      const text=await r.text();
+      try{ return JSON.parse(text); }catch(e){ throw new Error('bad-response'); }
+    }catch(e){ clearTimeout(to); lastErr=e; if(i<tries-1) await new Promise(res=>setTimeout(res,500*(i+1))); }
+  }
+  throw lastErr;
+}
 function aiReady(){ return (CODE_MODE && MEMBER) || !!getKey(); }
 async function geminiFetch(body){
   if(CODE_MODE && MEMBER){ const d=await api({action:'ai',code:MEMBER.code,body}); if(!d||!d.ok||!d.gemini) throw new Error((d&&d.error)||'AI proxy lỗi'); return d.gemini; }
