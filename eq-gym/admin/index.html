@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#12161C">
+<title>EQ GYM · Quản trị</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#F1F2F5; --surface:#FFFFFF; --surface-2:#F7F8FA;
+    --ink:#161B22; --ink-soft:#5B6472; --ink-faint:#8A93A3;
+    --line:#E3E6EA; --line-strong:#CDD2DA;
+    --accent:#0A6E5D; --accent-ink:#08594B; --accent-soft:#E1EEE8;
+    --good:#0A8C77; --good-soft:#E1EEE8;
+    --pending:#B27607; --pending-soft:#FBF0DA;
+    --warn:#B5533C; --warn-soft:#F5E3DD;
+    --shadow:0 1px 2px rgba(22,27,34,.04), 0 8px 24px rgba(22,27,34,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg)}
+  body{
+    font-family:'Be Vietnam Pro',-apple-system,BlinkMacSystemFont,sans-serif;
+    color:var(--ink); font-size:14px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:'Space Grotesk',sans-serif; margin:0; text-wrap:balance; }
+  .num{ font-family:'Space Grotesk',sans-serif; font-variant-numeric:tabular-nums; }
+  a{ color:var(--accent); text-decoration:none; }
+  input,button{ font-family:inherit; }
+  ::-webkit-scrollbar{ height:8px; width:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--line-strong); border-radius:8px; }
+
+  .page{ max-width:1080px; margin:0 auto; padding:0 20px 60px; }
+  .topbar{
+    display:flex; align-items:center; gap:14px; padding:18px 0;
+    border-bottom:1px solid var(--line); margin-bottom:24px; flex-wrap:wrap;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{ width:34px;height:34px;border-radius:10px;background:#12161C;display:flex;align-items:center;justify-content:center;flex:0 0 34px; }
+  .brand h1{ font-size:16px; font-weight:700; }
+  .brand span{ color:var(--accent); }
+  .topbar-right{ margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .who{ font-size:12.5px; color:var(--ink-soft); font-weight:600; }
+  .btn{
+    border:1px solid var(--line); background:var(--surface); color:var(--ink);
+    border-radius:10px; padding:9px 14px; font-size:12.5px; font-weight:700;
+    cursor:pointer; min-height:38px;
+  }
+  .btn:hover{ border-color:var(--line-strong); }
+  .btn-dark{ background:#12161C; color:#fff; border-color:#12161C; }
+  .btn-accent{ background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
+  .kpi{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); }
+  .kpi-label{ font-size:11px; color:var(--ink-faint); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+  .kpi-value{ font-size:26px; font-weight:700; margin-top:6px; }
+
+  section{ margin-bottom:32px; }
+  .sec-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .sec-head h2{ font-size:16px; font-weight:700; }
+  .sec-count{ font-size:12px; color:var(--ink-faint); font-weight:600; }
+
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; }
+  .empty{ padding:28px 18px; text-align:center; color:var(--ink-soft); font-weight:600; font-size:13px; }
+
+  .table-wrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; min-width:560px; }
+  th,td{ text-align:left; padding:11px 16px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th{ font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); font-weight:700; background:var(--surface-2); }
+  tbody tr:last-child td{ border-bottom:none; }
+  td.mono{ font-family:'Space Grotesk',sans-serif; font-variant-numeric:tabular-nums; }
+  td.email{ white-space:normal; max-width:220px; overflow:hidden; text-overflow:ellipsis; }
+
+  .pill{ display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; font-size:10.5px; font-weight:700; white-space:nowrap; }
+  .pill-good{ background:var(--good-soft); color:var(--good); }
+  .pill-pending{ background:var(--pending-soft); color:var(--pending); }
+  .pill-off{ background:var(--surface-2); color:var(--ink-faint); }
+  .pill-warn{ background:var(--warn-soft); color:var(--warn); }
+
+  .row-actions{ display:flex; gap:6px; }
+  .row-actions .btn{ padding:7px 11px; font-size:11.5px; min-height:32px; }
+
+  .voucher-form{ display:flex; gap:8px; flex-wrap:wrap; padding:14px 16px; border-bottom:1px solid var(--line); background:var(--surface-2); }
+  .voucher-form input{ background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:13px; }
+  #vf_code{ flex:1; min-width:140px; text-transform:uppercase; }
+  #vf_discount{ width:110px; }
+  #vf_max{ width:130px; }
+
+  .gate{ max-width:380px; margin:14vh auto 0; text-align:center; padding:0 20px; }
+  .gate .brand-mark{ margin:0 auto 18px; }
+  .gate h1{ font-size:20px; margin-bottom:6px; }
+  .gate p{ color:var(--ink-soft); font-size:13px; margin:0 0 22px; line-height:1.6; }
+  .gate input{ width:100%; background:var(--surface); border:1px solid var(--line); border-radius:11px; padding:13px; font-size:14px; margin-bottom:10px; }
+  .gate .btn{ width:100%; min-height:46px; font-size:13.5px; }
+  .gate-msg{ font-size:12px; color:var(--ink-soft); margin-top:12px; }
+
+  @media (max-width:720px){
+    .kpis{ grid-template-columns:1fr 1fr; }
+    .page{ padding:0 14px 40px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const SUPA_URL="https://dpzlwlaekhfmorckukfm.supabase.co";
+const SUPA_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwemx3bGFla2hmbW9yY2t1a2ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NTk3NDMsImV4cCI6MjEwNTAzNTc0M30.BCSyd379ekTdrY3UKR9UCI72XGU6-xI02RldLSEYCIw";
+const sb=window.supabase.createClient(SUPA_URL,SUPA_ANON,{auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
+
+let AUTH=null;        // {id,email,role}
+let STATE='loading';  // loading | signin | forbidden | ready
+let DATA={stats:null,pending:null,vouchers:null,users:null};
+let MSG='';
+
+const $=id=>document.getElementById(id);
+const esc=s=>(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fmt=n=>(n||0).toLocaleString('vi-VN');
+const LOGO=`<svg width="18" height="18" viewBox="0 0 100 100"><rect x="10" y="18" width="9" height="64" rx="4.5" fill="#fff"/><rect x="10" y="18" width="32" height="9" rx="4.5" fill="#fff"/><rect x="10" y="45" width="26" height="9" rx="4.5" fill="#fff"/><rect x="10" y="73" width="32" height="9" rx="4.5" fill="#fff"/><circle cx="70" cy="50" r="22" fill="none" stroke="#0FB89B" stroke-width="9"/><circle cx="70" cy="50" r="5" fill="#E85B5B"/></svg>`;
+
+function cleanAuthParams(){
+  try{
+    const url=new URL(location.href);
+    ['code','state','access_token','refresh_token','expires_in','expires_at','token_type','type','provider_token','provider_refresh_token','error','error_code','error_description'].forEach(k=>url.searchParams.delete(k));
+    url.hash='';
+    if(url.href!==location.href) history.replaceState(null,'',url.pathname+url.search);
+  }catch(e){}
+}
+
+async function boot(){
+  try{
+    const qp=new URLSearchParams(location.search); const oe=qp.get('error');
+    if(oe) MSG='Đăng nhập lỗi: '+(qp.get('error_description')||oe).replace(/\+/g,' ');
+  }catch(e){}
+  const {data}=await sb.auth.getSession();
+  await applySession(data.session);
+  cleanAuthParams();
+  sb.auth.onAuthStateChange((_e,session)=>{ applySession(session); });
+}
+
+async function applySession(session){
+  if(session&&session.user){
+    const u=session.user;
+    let prof=null;
+    try{ const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){}
+    if(!prof){ try{ await sb.from('profiles').upsert({id:u.id,email:u.email}); const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} }
+    AUTH={id:u.id,email:u.email,role:prof&&prof.role};
+    STATE=(AUTH.role==='admin')?'ready':'forbidden';
+    if(STATE==='ready') loadAll();
+  } else { AUTH=null; STATE='signin'; }
+  render();
+}
+
+async function signInEmail(){
+  const email=($('authemail')&&$('authemail').value||'').trim();
+  if(!email||!/.+@.+\..+/.test(email)){ MSG='Nhập email hợp lệ'; render(); return; }
+  try{ const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split('#')[0]}}); if(error) throw error; MSG='Đã gửi liên kết đăng nhập tới email — mở email và bấm vào link.'; }
+  catch(e){ MSG='Lỗi: '+e.message; }
+  render();
+}
+async function signInGoogle(){ try{ await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.href.split('#')[0]}}); }catch(e){ MSG='Lỗi Google: '+e.message; render(); } }
+async function signOut(){ try{ await sb.auth.signOut(); }catch(e){} AUTH=null; STATE='signin'; render(); }
+
+async function loadAll(){
+  render();
+  try{ const {data}=await sb.rpc('admin_stats'); DATA.stats=(data&&data[0])||null; }catch(e){}
+  try{
+    const {data}=await sb.from('payments').select('*').eq('status','pending').order('created_at',{ascending:true});
+    const pend=data||[];
+    const ids=[...new Set(pend.map(p=>p.user_id).filter(Boolean))];
+    let emails={};
+    if(ids.length){ try{ const {data:profs}=await sb.from('profiles').select('id,email').in('id',ids); (profs||[]).forEach(p=>emails[p.id]=p.email); }catch(e){} }
+    pend.forEach(p=>p.email=emails[p.user_id]||p.user_id);
+    DATA.pending=pend;
+  }catch(e){ DATA.pending=[]; }
+  try{ const {data}=await sb.from('vouchers').select('*').order('created_at',{ascending:false}); DATA.vouchers=data||[]; }catch(e){ DATA.vouchers=[]; }
+  try{ const {data}=await sb.from('profiles').select('*').order('created_at',{ascending:false}).limit(80); DATA.users=data||[]; }catch(e){ DATA.users=[]; }
+  render();
+}
+
+async function approvePay(id,uid){
+  try{
+    const until=new Date(); until.setFullYear(until.getFullYear()+1);
+    await sb.from('profiles').update({premium_until:until.toISOString()}).eq('id',uid);
+    await sb.from('payments').update({status:'approved',approved_by:AUTH.id,approved_at:new Date().toISOString()}).eq('id',id);
+    loadAll();
+  }catch(e){ alert('Lỗi: '+e.message); }
+}
+async function rejectPay(id){ try{ await sb.from('payments').update({status:'rejected'}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
+async function createVoucher(){
+  const code=($('vf_code').value||'').trim().toUpperCase();
+  const discount=parseInt($('vf_discount').value||'0',10);
+  const maxRaw=($('vf_max').value||'').trim();
+  if(!code||!discount){ alert('Nhập mã và số tiền giảm'); return; }
+  try{ await sb.from('vouchers').insert({code,discount_amount:discount,max_uses:maxRaw?parseInt(maxRaw,10):null}); loadAll(); }
+  catch(e){ alert('Lỗi: '+e.message); }
+}
+async function toggleVoucher(id,active){ try{ await sb.from('vouchers').update({active:!active}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
+
+function topbar(){
+  return `<div class="topbar">
+    <div class="brand"><div class="brand-mark">${LOGO}</div><h1>EQ GYM <span>Quản trị</span></h1></div>
+    <div class="topbar-right">
+      <a class="who" href="../">← Về app học</a>
+      ${AUTH?`<span class="who">${esc(AUTH.email)}</span><button class="btn" onclick="signOut()">Đăng xuất</button>`:''}
+    </div>
+  </div>`;
+}
+
+function renderGate(){
+  return `<div class="page"><div class="gate">
+    <div class="brand-mark" style="width:52px;height:52px;border-radius:16px">${LOGO}</div>
+    <h1>Đăng nhập quản trị</h1>
+    <p>Trang riêng cho quản trị viên EQ GYM — dùng đúng tài khoản được cấp quyền admin.</p>
+    <input id="authemail" type="email" placeholder="Email của bạn">
+    <button class="btn btn-accent" onclick="signInEmail()">Gửi liên kết đăng nhập</button>
+    <button class="btn" style="margin-top:8px" onclick="signInGoogle()">Đăng nhập với Google</button>
+    ${MSG?`<p class="gate-msg">${esc(MSG)}</p>`:''}
+  </div></div>`;
+}
+function renderForbidden(){
+  return `<div class="page">${topbar()}<div class="gate">
+    <h1>Không có quyền truy cập</h1>
+    <p>Tài khoản <b>${esc(AUTH.email)}</b> chưa được cấp quyền quản trị. Nếu đây là nhầm lẫn, liên hệ người quản lý hệ thống để được cấp quyền admin.</p>
+    <button class="btn" onclick="signOut()">Đăng xuất</button>
+  </div></div>`;
+}
+
+function kpi(label,val,cls){ return `<div class="kpi"><div class="kpi-label">${label}</div><div class="kpi-value num ${cls||''}">${val}</div></div>`; }
+
+function renderDashboard(){
+  const st=DATA.stats;
+  let h=topbar();
+  h+=`<div class="page">`;
+  h+=`<div class="kpis">${st?[
+    kpi('Học viên',fmt(st.total_users)),
+    kpi('Premium',fmt(st.premium_users)),
+    kpi('Chờ duyệt',fmt(st.pending_payments),st.pending_payments>0?'':''),
+    kpi('Doanh thu',fmt(st.revenue)+'đ')
+  ].join(''):'<p class="who">Đang tải thống kê...</p>'}</div>`;
+
+  // Pending payments
+  h+=`<section><div class="sec-head"><h2>Chờ duyệt thanh toán</h2><span class="sec-count">${DATA.pending?DATA.pending.length+' đơn':''}</span></div><div class="card">`;
+  if(DATA.pending==null) h+=`<div class="empty">Đang tải...</div>`;
+  else if(!DATA.pending.length) h+=`<div class="empty">✅ Không có yêu cầu chờ duyệt.</div>`;
+  else{
+    h+=`<div class="table-wrap"><table><thead><tr><th>Học viên</th><th>Mã CK</th><th>Voucher</th><th>Số tiền</th><th>Thời gian</th><th></th></tr></thead><tbody>`;
+    DATA.pending.forEach(p=>{
+      h+=`<tr><td class="email">${esc(p.email)}</td><td class="mono">${esc(p.code||'—')}</td><td>${p.voucher_code?`<span class="pill pill-good">${esc(p.voucher_code)} · -${fmt(p.discount_amount||0)}đ</span>`:'—'}</td><td class="mono">${fmt(p.amount||0)}đ</td><td>${new Date(p.created_at).toLocaleString('vi-VN')}</td><td><div class="row-actions"><button class="btn btn-accent" onclick="approvePay('${p.id}','${p.user_id}')">Duyệt</button><button class="btn" onclick="rejectPay('${p.id}')">Từ chối</button></div></td></tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  }
+  h+=`</div></section>`;
+
+  // Vouchers
+  h+=`<section><div class="sec-head"><h2>Mã giảm giá</h2></div><div class="card">
+    <div class="voucher-form">
+      <input id="vf_code" placeholder="MÃ (vd EQGYM199K)">
+      <input id="vf_discount" type="number" placeholder="Giảm (đ)">
+      <input id="vf_max" type="number" placeholder="Lượt (trống = ∞)">
+      <button class="btn btn-dark" onclick="createVoucher()">+ Tạo mã</button>
+    </div>`;
+  if(DATA.vouchers==null) h+=`<div class="empty">Đang tải...</div>`;
+  else if(!DATA.vouchers.length) h+=`<div class="empty">Chưa có mã nào.</div>`;
+  else{
+    h+=`<div class="table-wrap"><table><thead><tr><th>Mã</th><th>Giảm</th><th>Đã dùng</th><th>Trạng thái</th><th></th></tr></thead><tbody>`;
+    DATA.vouchers.forEach(v=>{
+      h+=`<tr><td class="mono">${esc(v.code)}</td><td class="mono">${fmt(v.discount_amount)}đ</td><td class="mono">${v.used_count}${v.max_uses!=null?'/'+v.max_uses:''}</td><td><span class="pill ${v.active?'pill-good':'pill-off'}">${v.active?'Đang bật':'Đã tắt'}</span></td><td><button class="btn" onclick="toggleVoucher('${v.id}',${v.active})">${v.active?'Tắt':'Bật'}</button></td></tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  }
+  h+=`</div></section>`;
+
+  // Users
+  h+=`<section><div class="sec-head"><h2>Học viên</h2><span class="sec-count">${DATA.users?'gần đây · '+DATA.users.length:''}</span></div><div class="card">`;
+  if(DATA.users==null) h+=`<div class="empty">Đang tải...</div>`;
+  else if(!DATA.users.length) h+=`<div class="empty">Chưa có học viên.</div>`;
+  else{
+    h+=`<div class="table-wrap"><table><thead><tr><th>Email</th><th>Ngày tham gia</th><th>Vai trò</th><th>Trạng thái</th></tr></thead><tbody>`;
+    DATA.users.forEach(u=>{
+      const prem=u.premium_until&&new Date(u.premium_until)>new Date();
+      h+=`<tr><td class="email">${esc(u.email||u.id)}</td><td>${new Date(u.created_at).toLocaleDateString('vi-VN')}</td><td>${u.role==='admin'?'<span class="pill pill-warn">Admin</span>':'Học viên'}</td><td><span class="pill ${prem?'pill-good':'pill-off'}">${prem?'★ Premium':'Free'}</span></td></tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  }
+  h+=`</div></section>`;
+
+  h+=`</div>`;
+  return h;
+}
+
+function render(){
+  const app=$('app');
+  if(STATE==='loading'){ app.innerHTML=`<div class="page"><p class="who" style="margin-top:40px">Đang tải...</p></div>`; return; }
+  if(STATE==='signin'){ app.innerHTML=renderGate(); return; }
+  if(STATE==='forbidden'){ app.innerHTML=renderForbidden(); return; }
+  app.innerHTML=renderDashboard();
+}
+
+render();
+boot();
+</script>
+</body>
+</html>
