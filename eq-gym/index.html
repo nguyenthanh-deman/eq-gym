@@ -58,7 +58,7 @@ let AUTH=null;
 function cleanAuthParams(){
   try{
     const url=new URL(location.href);
-    ['code','state','access_token','refresh_token','expires_in','expires_at','token_type','type','provider_token','provider_refresh_token'].forEach(k=>url.searchParams.delete(k));
+    ['code','state','access_token','refresh_token','expires_in','expires_at','token_type','type','provider_token','provider_refresh_token','error','error_code','error_description'].forEach(k=>url.searchParams.delete(k));
     url.hash='';
     if(url.href!==location.href) history.replaceState(null,'',url.pathname+url.search);
   }catch(e){}
@@ -774,9 +774,15 @@ function acctHtml(){
 }
 function openAuth(){ openSettings(); }
 async function signInEmail(){ const email=val('authemail'); if(!email||!/.+@.+\..+/.test(email)){ toast('Nhập email hợp lệ'); return; } const msg=document.getElementById('authmsg'); try{ const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split('#')[0]}}); if(error) throw error; if(msg) msg.innerHTML='✅ Đã gửi liên kết đăng nhập tới email của bạn. Mở email và bấm vào link để vào.'; }catch(e){ if(msg) msg.textContent='Lỗi: '+e.message; } }
-async function signInGoogle(){ try{ await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.href.split('#')[0]}}); }catch(e){ toast('Lỗi Google: '+e.message); } }
+let _oauthBusy=false;
+async function signInGoogle(){ if(_oauthBusy) return; _oauthBusy=true; try{ await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.href.split('#')[0]}}); }catch(e){ _oauthBusy=false; toast('Lỗi Google: '+e.message); } }
 async function signOut(){ try{ await sb.auth.signOut(); }catch(e){} AUTH=null; try{ localStorage.removeItem('eqgym_migrated'); }catch(e){} UI.settingsOpen=false; render(); toast('Đã đăng xuất'); }
-async function initAuth(){ if(!BACKEND) return; const {data,error}=await sb.auth.getSession(); if(error){ console.error('getSession',error); toast('Lỗi đăng nhập: '+error.message); } await applySession(data.session); cleanAuthParams(); sb.auth.onAuthStateChange((_e,session)=>{ applySession(session); }); }
+async function initAuth(){
+  if(!BACKEND) return;
+  try{ const qp=new URLSearchParams(location.search); const oe=qp.get('error'); if(oe){ const desc=(qp.get('error_description')||oe).replace(/\+/g,' '); console.error('oauth callback error',oe,desc); toast('Đăng nhập lỗi: '+desc); } }catch(e){}
+  const {data,error}=await sb.auth.getSession(); if(error){ console.error('getSession',error); toast('Lỗi đăng nhập: '+error.message); }
+  await applySession(data.session); cleanAuthParams(); sb.auth.onAuthStateChange((_e,session)=>{ applySession(session); });
+}
 async function applySession(session){ if(session&&session.user){ const u=session.user; let prof=null; try{ const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} if(!prof){ try{ await sb.from('profiles').upsert({id:u.id,email:u.email}); const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} } AUTH={id:u.id,email:u.email,premium_until:prof&&prof.premium_until,role:prof&&prof.role,pay_code:prof&&prof.pay_code}; await migrateIfNeeded(); await pullRemote(); } else { AUTH=null; } render(); }
 async function migrateIfNeeded(){ if(!BACKEND||!AUTH) return; try{ if(localStorage.getItem('eqgym_migrated')) return; }catch(e){ return; } await syncPush(); for(const k of Object.keys(S.history)){ const arr=S.history[k]||[]; for(let i=arr.length-1;i>=0;i--){ await pushPractice(+k,arr[i]); } } if(S.quiz) await pushAssessment(S.quiz.scores,S.quiz.answers); try{ localStorage.setItem('eqgym_migrated','1'); }catch(e){} }
 
