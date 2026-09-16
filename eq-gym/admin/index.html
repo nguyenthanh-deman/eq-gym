@@ -86,6 +86,23 @@
   .row-actions{ display:flex; gap:6px; }
   .row-actions .btn{ padding:7px 11px; font-size:11.5px; min-height:32px; }
 
+  /* Danh sách dạng thẻ — dùng thay bảng trên màn hẹp (dễ đọc/bấm bằng ngón tay) */
+  .card-list{ display:none; }
+  .row-card{ padding:14px 16px; border-bottom:1px solid var(--line); }
+  .row-card:last-child{ border-bottom:none; }
+  .row-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .row-top b{ font-size:13.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .row-top .mono{ font-size:13.5px; font-weight:700; flex:0 0 auto; }
+  .row-meta{ font-size:11.5px; color:var(--ink-faint); font-weight:600; margin-top:4px; }
+  .row-extra{ margin-top:8px; }
+  .row-card .row-actions{ margin-top:12px; }
+  .row-card .row-actions .btn{ flex:1; min-height:40px; font-size:12.5px; }
+
+  @media (max-width:720px){
+    .table-wrap{ display:none; }
+    .card-list{ display:block; }
+  }
+
   .voucher-form{ display:flex; gap:8px; flex-wrap:wrap; padding:14px 16px; border-bottom:1px solid var(--line); background:var(--surface-2); }
   .voucher-form input{ background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:13px; }
   #vf_code{ flex:1; min-width:140px; text-transform:uppercase; }
@@ -255,6 +272,11 @@ function renderDashboard(){
       h+=`<tr><td class="email">${esc(p.email)}</td><td class="mono">${esc(p.code||'—')}</td><td>${p.voucher_code?`<span class="pill pill-good">${esc(p.voucher_code)} · -${fmt(p.discount_amount||0)}đ</span>`:'—'}</td><td class="mono">${fmt(p.amount||0)}đ</td><td>${new Date(p.created_at).toLocaleString('vi-VN')}</td><td><div class="row-actions"><button class="btn btn-accent" onclick="approvePay('${p.id}','${p.user_id}')">Duyệt</button><button class="btn" onclick="rejectPay('${p.id}')">Từ chối</button></div></td></tr>`;
     });
     h+=`</tbody></table></div>`;
+    h+=`<div class="card-list">`;
+    DATA.pending.forEach(p=>{
+      h+=`<div class="row-card"><div class="row-top"><b>${esc(p.email)}</b><span class="mono">${fmt(p.amount||0)}đ</span></div><div class="row-meta">Mã CK: ${esc(p.code||'—')} · ${new Date(p.created_at).toLocaleString('vi-VN')}</div>${p.voucher_code?`<div class="row-extra"><span class="pill pill-good">${esc(p.voucher_code)} · -${fmt(p.discount_amount||0)}đ</span></div>`:''}<div class="row-actions"><button class="btn btn-accent" onclick="approvePay('${p.id}','${p.user_id}')">Duyệt</button><button class="btn" onclick="rejectPay('${p.id}')">Từ chối</button></div></div>`;
+    });
+    h+=`</div>`;
   }
   h+=`</div></section>`;
 
@@ -274,6 +296,11 @@ function renderDashboard(){
       h+=`<tr><td class="mono">${esc(v.code)}</td><td class="mono">${fmt(v.discount_amount)}đ</td><td class="mono">${v.used_count}${v.max_uses!=null?'/'+v.max_uses:''}</td><td><span class="pill ${v.active?'pill-good':'pill-off'}">${v.active?'Đang bật':'Đã tắt'}</span></td><td><button class="btn" onclick="toggleVoucher('${v.id}',${v.active})">${v.active?'Tắt':'Bật'}</button></td></tr>`;
     });
     h+=`</tbody></table></div>`;
+    h+=`<div class="card-list">`;
+    DATA.vouchers.forEach(v=>{
+      h+=`<div class="row-card"><div class="row-top"><b class="mono">${esc(v.code)}</b><span class="pill ${v.active?'pill-good':'pill-off'}">${v.active?'Đang bật':'Đã tắt'}</span></div><div class="row-meta">Giảm ${fmt(v.discount_amount)}đ · Đã dùng ${v.used_count}${v.max_uses!=null?'/'+v.max_uses:''}</div><div class="row-actions"><button class="btn" onclick="toggleVoucher('${v.id}',${v.active})">${v.active?'Tắt':'Bật'}</button></div></div>`;
+    });
+    h+=`</div>`;
   }
   h+=`</div></section>`;
 
@@ -288,6 +315,12 @@ function renderDashboard(){
       h+=`<tr><td class="email">${esc(u.email||u.id)}</td><td>${new Date(u.created_at).toLocaleDateString('vi-VN')}</td><td>${u.role==='admin'?'<span class="pill pill-warn">Admin</span>':'Học viên'}</td><td><span class="pill ${prem?'pill-good':'pill-off'}">${prem?'★ Premium':'Free'}</span></td></tr>`;
     });
     h+=`</tbody></table></div>`;
+    h+=`<div class="card-list">`;
+    DATA.users.forEach(u=>{
+      const prem=u.premium_until&&new Date(u.premium_until)>new Date();
+      h+=`<div class="row-card"><div class="row-top"><b>${esc(u.email||u.id)}</b><span class="pill ${prem?'pill-good':'pill-off'}">${prem?'★ Premium':'Free'}</span></div><div class="row-meta">${new Date(u.created_at).toLocaleDateString('vi-VN')}${u.role==='admin'?' · Admin':''}</div></div>`;
+    });
+    h+=`</div>`;
   }
   h+=`</div></section>`;
 
