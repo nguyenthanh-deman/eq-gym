@@ -94,17 +94,13 @@ async function api(payload,tries){
   }
   throw lastErr;
 }
-function aiReady(){ return (BACKEND && AUTH && isPremium()) || !!getKey(); }
+function aiReady(){ return !!(BACKEND && AUTH && isPremium()); }
 async function geminiFetch(body){
-  if(BACKEND && AUTH && isPremium()){
-    const {data,error}=await sb.functions.invoke('ai',{body});
-    if(error) throw error;
-    if(!data || data.error) throw new Error((data&&data.error)||'AI proxy lỗi');
-    return data;
-  }
-  const key=getKey(); if(!key) throw new Error('no key');
-  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(!r.ok) throw new Error('HTTP '+r.status); return await r.json();
+  if(!(BACKEND && AUTH && isPremium())) throw new Error('premium_required');
+  const {data,error}=await sb.functions.invoke('ai',{body});
+  if(error) throw error;
+  if(!data || data.error) throw new Error((data&&data.error)||'AI proxy lỗi');
+  return data;
 }
 let _psT=null;
 function memberSession(){ try{ return localStorage.getItem('eqgym_session')||''; }catch(e){ return ''; } }
@@ -406,7 +402,6 @@ function isAdmin(){ return AUTH && AUTH.role==='admin'; }
 function unlocked(n){ if(n===0) return true; if(!isPremium()) return false; return isDone(n-1); }
 function rankOf(d){ let r=RANKS[0]; for(const x of RANKS){ if(d>=x[0]) r=x; } return r; }
 function nextRank(d){ for(const x of RANKS){ if(d<x[0]) return x; } return null; }
-function getKey(){ try{ return localStorage.getItem('eqgym_gemini_key')||''; }catch(e){ return ''; } }
 function ytId(s){ if(!s) return ''; s=s.trim(); const m=s.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{6,})/); return m?m[1]:(/^[\w-]{6,}$/.test(s)?s:''); }
 function fmtDate(ts){ try{ const d=new Date(ts); return d.toLocaleDateString('vi-VN')+' '+d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
 function clip(s,n){ s=s||''; return s.length>n? s.slice(0,n)+'…' : s; }
@@ -687,10 +682,10 @@ TIẾN ĐỘ HIỆN TẠI: ${progressSummary()}`;
 }
 function assistantOffline(text){
   const t=text.toLowerCase(); const nextN=[...Array(30).keys()].find(n=>!isDone(n)); const nx=nextN!=null?('Buổi '+nextN+' — '+LESSONS[nextN].title):'đã hoàn thành hết 30 buổi';
-  if(/buổi nào|bài nào|học gì|bắt đầu|hôm nay|nên tập|nên luyện/.test(t)) return `Hôm nay bạn nên tập ${nx}. Mở Lộ trình → bấm vào buổi đó → xem video → làm Phòng Tập Tình Huống. Chỉ 5-7 phút mỗi ngày, cơ bắp cảm xúc sẽ lớn dần. (Mẹo: thêm API key Gemini miễn phí ở mục Tài khoản để Coach trò chuyện sâu hơn.)`;
+  if(/buổi nào|bài nào|học gì|bắt đầu|hôm nay|nên tập|nên luyện/.test(t)) return `Hôm nay bạn nên tập ${nx}. Mở Lộ trình → bấm vào buổi đó → xem video → làm Phòng Tập Tình Huống. Chỉ 5-7 phút mỗi ngày, cơ bắp cảm xúc sẽ lớn dần. (Mẹo: nâng cấp Premium để Coach trò chuyện sâu hơn.)`;
   if(/căng thẳng|stress|lo|buồn|giận|mệt|áp lực|tức/.test(t)) return `Coach nghe thấy rồi. Khi cảm xúc dâng cao, đừng chống lại — hãy thở: hít 4 nhịp, giữ 4 nhịp, thở ra 6 nhịp, làm 3 lần. Rồi gọi tên cảm xúc: "Mình đang thấy ___ vì ___". Chỉ gọi tên thôi đã làm cơn sóng dịu đi một nửa.`;
   if(/tình huống|luyện|thực hành|bài tập/.test(t)) return `Muốn luyện thì mở một buổi bất kỳ, kéo tới Phòng Tập Tình Huống rồi bấm nút nhận tình huống — Coach sẽ dựng cho bạn một tình huống đời thực để phản ứng và chấm điểm.`;
-  return `Coach luôn ở đây. Để trò chuyện thật sâu và cá nhân hóa, hãy thêm API key Gemini (miễn phí) ở mục Tài khoản. Còn bây giờ: cứ vào ${nx} và tập đều mỗi ngày — đó là cách cơ bắp cảm xúc lớn lên.`;
+  return `Coach luôn ở đây. Để trò chuyện thật sâu và cá nhân hóa, hãy nâng cấp Premium. Còn bây giờ: cứ vào ${nx} và tập đều mỗi ngày — đó là cách cơ bắp cảm xúc lớn lên.`;
 }
 
 /* ===== TRẮC NGHIỆM EQ (24 câu) ===== */
@@ -1123,7 +1118,7 @@ function lessonPractice(n,step){
     <button onclick="grade(${n})" ${UI.grading?'disabled':''} style="width:100%;margin-top:10px;border:none;border-radius:14px;padding:15px;font-size:14.5px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#E85B5B,#C74848);color:#fff;box-shadow:0 8px 22px rgba(232,91,91,.28);min-height:50px;opacity:${UI.grading?.55:1}">${UI.grading?'Coach đang chấm...':(S.graded[n]?'Nộp bài luyện tập lần nữa':'Nộp bài cho Coach AI chấm điểm')}</button>`;
   if(res) h+=`<div style="margin-top:13px;background:#EAFBF6;border-radius:15px;padding:14px 15px;color:#0F1923;border:1px solid #B6EDDF;animation:fade .3s">
     <div style="display:flex;align-items:center;gap:12px"><div style="width:58px;height:58px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 58px;border:4px solid #0FB89B"><b style="font-family:'Space Grotesk';font-size:19px;line-height:1;color:#0F1923">${res.score}</b><span style="font-size:8.5px;color:#5C6B7A;font-weight:700">/100</span></div>
-    <div><h4 style="margin:0;font-size:13.5px;color:#0A6E5D;font-weight:800">${res.by==='ai'?'Coach AI chấm':'Chấm offline (chưa có API key)'}</h4><div style="font-size:11px;color:#B27607;margin-top:2px;font-weight:800">${res.score>=80?'★★★ Xuất sắc':res.score>=55?'★★ Tốt':'★ Cần luyện thêm'} · Khung 4 trụ EQ</div>${prevSco!=null?`<div style="font-size:11.5px;font-weight:800;margin-top:3px;color:${res.score-prevSco>=0?'#0A8C77':'#C74848'}">${res.score-prevSco>=0?'▲ +'+(res.score-prevSco):'▼ '+(res.score-prevSco)} so với lần trước</div>`:''}</div></div>
+    <div><h4 style="margin:0;font-size:13.5px;color:#0A6E5D;font-weight:800">${res.by==='ai'?'Coach AI chấm':'Chấm offline (chưa nâng cấp Premium)'}</h4><div style="font-size:11px;color:#B27607;margin-top:2px;font-weight:800">${res.score>=80?'★★★ Xuất sắc':res.score>=55?'★★ Tốt':'★ Cần luyện thêm'} · Khung 4 trụ EQ</div>${prevSco!=null?`<div style="font-size:11.5px;font-weight:800;margin-top:3px;color:${res.score-prevSco>=0?'#0A8C77':'#C74848'}">${res.score-prevSco>=0?'▲ +'+(res.score-prevSco):'▼ '+(res.score-prevSco)} so với lần trước</div>`:''}</div></div>
     ${pillarBarsHtml(res.dims)}
     <div style="font-size:13.5px;margin-top:6px;line-height:1.65;color:#22303D">${esc(res.feedback)}</div>${res.tip?`<div style="font-size:12.5px;margin-top:9px;background:#fff;border-radius:11px;padding:9px 12px;border:1px dashed #0FB89B;line-height:1.55;color:#22303D"><b style="color:#0A6E5D">Gợi ý:</b> ${esc(res.tip)}</div>`:''}</div>`;
   h+=`<div style="font-size:11.5px;color:#5C6B7A;margin-top:9px;line-height:1.55">${aiReady()?'Coach AI sẵn sàng chấm bài.':'Chưa bật AI — bài được chấm offline. Vào mục Tài khoản để thêm key (miễn phí).'}</div>`;
@@ -1160,7 +1155,7 @@ function viewChat(){
   let h=`<div style="animation:fade .25s ease;display:flex;flex-direction:column;min-height:100vh">
     <div style="position:sticky;top:0;z-index:30;background:rgba(245,248,250,.95);backdrop-filter:blur(12px);border-bottom:1px solid #E3E8EE;padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;display:flex;align-items:center;gap:12px">
       <div style="width:44px;height:44px;border-radius:50%;background:#fff;border:2px solid #0FB89B;display:flex;align-items:center;justify-content:center;flex:0 0 44px">${ring(26,'#0FB89B')}</div>
-      <div style="flex:1;min-width:0"><b style="font-family:'Space Grotesk';font-size:15px;display:block;font-weight:700">Coach AI</b><span style="font-size:11px;color:#5C6B7A;font-weight:600">${aiReady()?'Coach AI đang bật · đồng hành cùng bạn':'Chế độ offline · thêm key ở Tài khoản để bật AI'}</span></div>
+      <div style="flex:1;min-width:0"><b style="font-family:'Space Grotesk';font-size:15px;display:block;font-weight:700">Coach AI</b><span style="font-size:11px;color:#5C6B7A;font-weight:600">${aiReady()?'Coach AI đang bật · đồng hành cùng bạn':'Chế độ offline · nâng cấp Premium để bật AI'}</span></div>
       <button onclick="clearChat()" style="width:44px;height:44px;border-radius:14px;background:#fff;border:1px solid #E3E8EE;color:#5C6B7A;font-size:15px;cursor:pointer">🗑</button></div>
     <div id="cmsgs" style="flex:1;display:flex;flex-direction:column;gap:10px;padding:16px 16px 170px;overflow-y:auto">`;
   msgs.forEach(m=>{ const me=m.role==='user'; h+=`<div style="display:flex;justify-content:${me?'flex-end':'flex-start'}"><div style="max-width:84%;background:${me?'linear-gradient(135deg,#0FB89B,#0A8C77)':'#fff'};color:${me?'#fff':'#22303D'};border:1px solid ${me?'transparent':'#E3E8EE'};border-radius:16px;padding:10px 14px;font-size:14px;line-height:1.65">${me?'':'<span style="display:block;font-family:Space Grotesk;font-size:9px;font-weight:700;letter-spacing:1.5px;color:#0A6E5D;margin-bottom:4px">COACH AI</span>'}<span style="white-space:pre-wrap">${esc(m.text)}</span></div></div>`; });
@@ -1231,11 +1226,7 @@ function sheetSettings(){
     h+=`<button onclick="logoutMember()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:46px">Đăng xuất</button>`;
     return sheet(h);
   }
-  return sheet(acctHtml()+`<h3 style="margin:6px 0 6px;font-family:'Space Grotesk';font-size:17px;font-weight:700">Coach AI (Gemini)</h3>
-    <p style="color:#5C6B7A;font-size:12.5px;line-height:1.65;margin:0;font-weight:600">Dán <b style="color:#0F1923">API key Google Gemini</b> (miễn phí) để AI chấm điểm và nhận xét cá nhân hóa. Lấy key tại <b style="color:#0A6E5D">aistudio.google.com/apikey</b>. Key chỉ lưu trên máy bạn.</p>
-    <input type="password" id="apikey" value="${esc(getKey())}" placeholder="Dán API key vào đây (AIza...)" style="width:100%;margin-top:14px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;color:#0F1923;padding:14px;font-size:14px">
-    <button onclick="saveKey()" style="width:100%;margin-top:14px;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:50px">Lưu API key</button>
-    <button onclick="clearKey()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:48px">Xóa key · dùng chấm offline</button>`);
+  return sheet(acctHtml());
 }
 function sheetMusic(){
   const vol=Math.round((snd?snd.vol:0.5)*100);
@@ -1415,8 +1406,6 @@ function toggleZone(m){ const cur=(function(){ const nextN=[...Array(30).keys()]
 function onAns(){ const ta=document.getElementById('ans'); if(!ta||UI.n==null) return; S.ans[UI.n]=ta.value; save(); const m=document.getElementById('savedmsg'); if(m){ m.textContent='Đã lưu vào nhật ký ✓'; clearTimeout(window._sm); window._sm=setTimeout(()=>{ if(m) m.textContent=''; },1400); } }
 function openSettings(){ renderAcctPre(); UI.settingsOpen=true; sfx('tap'); render(); }
 function renderAcctPre(){ if(BACKEND) refreshAuthUI(); }
-function saveKey(){ const k=(document.getElementById('apikey').value||'').trim(); try{ localStorage.setItem('eqgym_gemini_key',k); }catch(e){} UI.settingsOpen=false; render(); toast(k?'Coach AI đã sẵn sàng!':'Key trống — dùng chấm offline'); }
-function clearKey(){ try{ localStorage.removeItem('eqgym_gemini_key'); }catch(e){} UI.settingsOpen=false; render(); toast('Đã xóa key'); }
 function clearChat(){ if(confirm('Xóa toàn bộ hội thoại với Coach AI?')){ S.chat=[]; save(); render(); } }
 
 /* ===== BOOT ===== */
