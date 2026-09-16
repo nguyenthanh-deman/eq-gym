@@ -50,8 +50,19 @@ button{font-family:inherit}
 const SUPA_URL="https://dpzlwlaekhfmorckukfm.supabase.co";
 const SUPA_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwemx3bGFla2hmbW9yY2t1a2ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NTk3NDMsImV4cCI6MjEwNTAzNTc0M30.BCSyd379ekTdrY3UKR9UCI72XGU6-xI02RldLSEYCIw";
 const BACKEND=!!(SUPA_URL && SUPA_ANON && window.supabase);
-let sb=BACKEND ? window.supabase.createClient(SUPA_URL,SUPA_ANON) : null;
+let sb=BACKEND ? window.supabase.createClient(SUPA_URL,SUPA_ANON,{auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}}) : null;
 let AUTH=null;
+/* Dọn ?code=/#access_token=... khỏi URL sau khi Supabase đã xử lý xong đăng nhập —
+   để lỡ tải lại trang không bị dùng lại mã cũ (mã chỉ dùng được 1 lần) làm phiên đăng nhập
+   im lặng thất bại. Giữ nguyên các query khác (vd utm_source từ link marketing). */
+function cleanAuthParams(){
+  try{
+    const url=new URL(location.href);
+    ['code','state','access_token','refresh_token','expires_in','expires_at','token_type','type','provider_token','provider_refresh_token'].forEach(k=>url.searchParams.delete(k));
+    url.hash='';
+    if(url.href!==location.href) history.replaceState(null,'',url.pathname+url.search);
+  }catch(e){}
+}
 
 /* ================================================================
    🔐 APP BACKEND (Apps Script) — mã đăng nhập + Gemini ẩn + điểm + thi đua
@@ -765,7 +776,7 @@ function openAuth(){ openSettings(); }
 async function signInEmail(){ const email=val('authemail'); if(!email||!/.+@.+\..+/.test(email)){ toast('Nhập email hợp lệ'); return; } const msg=document.getElementById('authmsg'); try{ const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split('#')[0]}}); if(error) throw error; if(msg) msg.innerHTML='✅ Đã gửi liên kết đăng nhập tới email của bạn. Mở email và bấm vào link để vào.'; }catch(e){ if(msg) msg.textContent='Lỗi: '+e.message; } }
 async function signInGoogle(){ try{ await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.href.split('#')[0]}}); }catch(e){ toast('Lỗi Google: '+e.message); } }
 async function signOut(){ try{ await sb.auth.signOut(); }catch(e){} AUTH=null; try{ localStorage.removeItem('eqgym_migrated'); }catch(e){} UI.settingsOpen=false; render(); toast('Đã đăng xuất'); }
-async function initAuth(){ if(!BACKEND) return; const {data}=await sb.auth.getSession(); await applySession(data.session); sb.auth.onAuthStateChange((_e,session)=>{ applySession(session); }); }
+async function initAuth(){ if(!BACKEND) return; const {data,error}=await sb.auth.getSession(); if(error){ console.error('getSession',error); toast('Lỗi đăng nhập: '+error.message); } await applySession(data.session); cleanAuthParams(); sb.auth.onAuthStateChange((_e,session)=>{ applySession(session); }); }
 async function applySession(session){ if(session&&session.user){ const u=session.user; let prof=null; try{ const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} if(!prof){ try{ await sb.from('profiles').upsert({id:u.id,email:u.email}); const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} } AUTH={id:u.id,email:u.email,premium_until:prof&&prof.premium_until,role:prof&&prof.role,pay_code:prof&&prof.pay_code}; await migrateIfNeeded(); await pullRemote(); } else { AUTH=null; } render(); }
 async function migrateIfNeeded(){ if(!BACKEND||!AUTH) return; try{ if(localStorage.getItem('eqgym_migrated')) return; }catch(e){ return; } await syncPush(); for(const k of Object.keys(S.history)){ const arr=S.history[k]||[]; for(let i=arr.length-1;i>=0;i--){ await pushPractice(+k,arr[i]); } } if(S.quiz) await pushAssessment(S.quiz.scores,S.quiz.answers); try{ localStorage.setItem('eqgym_migrated','1'); }catch(e){} }
 
