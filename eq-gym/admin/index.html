@@ -2,144 +2,45 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#12161C">
+<meta name="theme-color" content="#0F1923">
 <title>EQ GYM · Quản trị</title>
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root{
-    --bg:#F1F2F5; --surface:#FFFFFF; --surface-2:#F7F8FA;
-    --ink:#161B22; --ink-soft:#5B6472; --ink-faint:#8A93A3;
-    --line:#E3E6EA; --line-strong:#CDD2DA;
-    --accent:#0A6E5D; --accent-ink:#08594B; --accent-soft:#E1EEE8;
-    --good:#0A8C77; --good-soft:#E1EEE8;
-    --pending:#B27607; --pending-soft:#FBF0DA;
-    --warn:#B5533C; --warn-soft:#F5E3DD;
-    --shadow:0 1px 2px rgba(22,27,34,.04), 0 8px 24px rgba(22,27,34,.06);
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:var(--bg)}
-  body{
-    font-family:'Be Vietnam Pro',-apple-system,BlinkMacSystemFont,sans-serif;
-    color:var(--ink); font-size:14px; line-height:1.55;
-    -webkit-font-smoothing:antialiased;
-  }
-  h1,h2,h3{ font-family:'Space Grotesk',sans-serif; margin:0; text-wrap:balance; }
-  .num{ font-family:'Space Grotesk',sans-serif; font-variant-numeric:tabular-nums; }
-  a{ color:var(--accent); text-decoration:none; }
-  input,button{ font-family:inherit; }
-  ::-webkit-scrollbar{ height:8px; width:8px; }
-  ::-webkit-scrollbar-thumb{ background:var(--line-strong); border-radius:8px; }
-
-  .page{ max-width:1080px; margin:0 auto; padding:0 20px 60px; }
-  .topbar{
-    display:flex; align-items:center; gap:14px; padding:18px 0;
-    border-bottom:1px solid var(--line); margin-bottom:24px; flex-wrap:wrap;
-  }
-  .brand{ display:flex; align-items:center; gap:10px; }
-  .brand-mark{ width:34px;height:34px;border-radius:10px;background:#12161C;display:flex;align-items:center;justify-content:center;flex:0 0 34px; }
-  .brand h1{ font-size:16px; font-weight:700; }
-  .brand span{ color:var(--accent); }
-  .topbar-right{ margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .who{ font-size:12.5px; color:var(--ink-soft); font-weight:600; }
-  .btn{
-    border:1px solid var(--line); background:var(--surface); color:var(--ink);
-    border-radius:10px; padding:9px 14px; font-size:12.5px; font-weight:700;
-    cursor:pointer; min-height:38px;
-  }
-  .btn:hover{ border-color:var(--line-strong); }
-  .btn-dark{ background:#12161C; color:#fff; border-color:#12161C; }
-  .btn-accent{ background:var(--accent); color:#fff; border-color:var(--accent); }
-
-  .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
-  .kpi{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); }
-  .kpi-label{ font-size:11px; color:var(--ink-faint); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
-  .kpi-value{ font-size:26px; font-weight:700; margin-top:6px; }
-
-  section{ margin-bottom:32px; }
-  .sec-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
-  .sec-head h2{ font-size:16px; font-weight:700; }
-  .sec-count{ font-size:12px; color:var(--ink-faint); font-weight:600; }
-
-  .card{ background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; }
-  .empty{ padding:28px 18px; text-align:center; color:var(--ink-soft); font-weight:600; font-size:13px; }
-
-  .table-wrap{ overflow-x:auto; }
-  table{ width:100%; border-collapse:collapse; font-size:13px; min-width:560px; }
-  th,td{ text-align:left; padding:11px 16px; border-bottom:1px solid var(--line); white-space:nowrap; }
-  th{ font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); font-weight:700; background:var(--surface-2); }
-  tbody tr:last-child td{ border-bottom:none; }
-  td.mono{ font-family:'Space Grotesk',sans-serif; font-variant-numeric:tabular-nums; }
-  td.email{ white-space:normal; max-width:220px; overflow:hidden; text-overflow:ellipsis; }
-
-  .pill{ display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; font-size:10.5px; font-weight:700; white-space:nowrap; }
-  .pill-good{ background:var(--good-soft); color:var(--good); }
-  .pill-pending{ background:var(--pending-soft); color:var(--pending); }
-  .pill-off{ background:var(--surface-2); color:var(--ink-faint); }
-  .pill-warn{ background:var(--warn-soft); color:var(--warn); }
-
-  .row-actions{ display:flex; gap:6px; }
-  .row-actions .btn{ padding:7px 11px; font-size:11.5px; min-height:32px; }
-
-  /* Danh sách dạng thẻ — dùng thay bảng trên màn hẹp (dễ đọc/bấm bằng ngón tay) */
-  .card-list{ display:none; }
-  .row-card{ padding:14px 16px; border-bottom:1px solid var(--line); }
-  .row-card:last-child{ border-bottom:none; }
-  .row-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-  .row-top b{ font-size:13.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
-  .row-top .mono{ font-size:13.5px; font-weight:700; flex:0 0 auto; }
-  .row-meta{ font-size:11.5px; color:var(--ink-faint); font-weight:600; margin-top:4px; }
-  .row-extra{ margin-top:8px; }
-  .row-card .row-actions{ margin-top:12px; }
-  .row-card .row-actions .btn{ flex:1; min-height:40px; font-size:12.5px; }
-
-  @media (max-width:720px){
-    .table-wrap{ display:none; }
-    .card-list{ display:block; }
-  }
-
-  .voucher-form{ display:flex; gap:8px; flex-wrap:wrap; padding:14px 16px; border-bottom:1px solid var(--line); background:var(--surface-2); }
-  .voucher-form input{ background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:13px; }
-  #vf_code{ flex:1; min-width:140px; text-transform:uppercase; }
-  #vf_discount{ width:110px; }
-  #vf_max{ width:130px; }
-
-  .gate{ max-width:380px; margin:14vh auto 0; text-align:center; padding:0 20px; }
-  .gate .brand-mark{ margin:0 auto 18px; }
-  .gate h1{ font-size:20px; margin-bottom:6px; }
-  .gate p{ color:var(--ink-soft); font-size:13px; margin:0 0 22px; line-height:1.6; }
-  .gate input{ width:100%; background:var(--surface); border:1px solid var(--line); border-radius:11px; padding:13px; font-size:14px; margin-bottom:10px; }
-  .gate .btn{ width:100%; min-height:46px; font-size:13.5px; }
-  .gate-msg{ font-size:12px; color:var(--ink-soft); margin-top:12px; }
-
-  @media (max-width:720px){
-    .kpis{ grid-template-columns:1fr 1fr; }
-    .page{ padding:0 14px 40px; }
-  }
+html,body{margin:0;padding:0;background:#E9EDF2}
+body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;color:#0F1923;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box}
+a{color:#0A6E5D;text-decoration:none}
+input{font-family:'Nunito',sans-serif}
+input:focus{outline:none;border-color:#0FB89B !important}
+button{font-family:inherit}
+::-webkit-scrollbar{width:0;height:0}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+table{width:100%;border-collapse:collapse}
 </style>
 </head>
 <body>
 <div id="app"></div>
-
 <script>
 const SUPA_URL="https://dpzlwlaekhfmorckukfm.supabase.co";
 const SUPA_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwemx3bGFla2hmbW9yY2t1a2ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NTk3NDMsImV4cCI6MjEwNTAzNTc0M30.BCSyd379ekTdrY3UKR9UCI72XGU6-xI02RldLSEYCIw";
 const sb=window.supabase.createClient(SUPA_URL,SUPA_ANON,{auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
 
-let AUTH=null;        // {id,email,role}
-let STATE='loading';  // loading | signin | forbidden | ready
+let AUTH=null;         // {id,email,role}
+let STATE='loading';   // loading | signin | forbidden | ready
+let UI={view:'overview'};
 let DATA={stats:null,pending:null,vouchers:null,users:null};
 let MSG='';
 
 const $=id=>document.getElementById(id);
 const esc=s=>(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const fmt=n=>(n||0).toLocaleString('vi-VN');
-const LOGO=`<svg width="18" height="18" viewBox="0 0 100 100"><rect x="10" y="18" width="9" height="64" rx="4.5" fill="#fff"/><rect x="10" y="18" width="32" height="9" rx="4.5" fill="#fff"/><rect x="10" y="45" width="26" height="9" rx="4.5" fill="#fff"/><rect x="10" y="73" width="32" height="9" rx="4.5" fill="#fff"/><circle cx="70" cy="50" r="22" fill="none" stroke="#0FB89B" stroke-width="9"/><circle cx="70" cy="50" r="5" fill="#E85B5B"/></svg>`;
+const LOGO=`<svg width="26" height="26" viewBox="0 0 100 100"><rect x="10" y="18" width="9" height="64" rx="4.5" fill="#0F1923"/><rect x="10" y="18" width="32" height="9" rx="4.5" fill="#0F1923"/><rect x="10" y="45" width="26" height="9" rx="4.5" fill="#0F1923"/><rect x="10" y="73" width="32" height="9" rx="4.5" fill="#0F1923"/><circle cx="70" cy="50" r="22" fill="none" stroke="#0FB89B" stroke-width="9"/><circle cx="70" cy="50" r="5" fill="#E85B5B"/></svg>`;
+const LOGOW=`<svg width="26" height="26" viewBox="0 0 100 100"><rect x="10" y="18" width="9" height="64" rx="4.5" fill="#fff"/><rect x="10" y="18" width="32" height="9" rx="4.5" fill="#fff"/><rect x="10" y="45" width="26" height="9" rx="4.5" fill="#fff"/><rect x="10" y="73" width="32" height="9" rx="4.5" fill="#fff"/><circle cx="70" cy="50" r="22" fill="none" stroke="#0FB89B" stroke-width="9"/><circle cx="70" cy="50" r="5" fill="#E85B5B"/></svg>`;
 
 function cleanAuthParams(){
   try{
@@ -151,20 +52,15 @@ function cleanAuthParams(){
 }
 
 async function boot(){
-  try{
-    const qp=new URLSearchParams(location.search); const oe=qp.get('error');
-    if(oe) MSG='Đăng nhập lỗi: '+(qp.get('error_description')||oe).replace(/\+/g,' ');
-  }catch(e){}
+  try{ const qp=new URLSearchParams(location.search); const oe=qp.get('error'); if(oe) MSG='Đăng nhập lỗi: '+(qp.get('error_description')||oe).replace(/\+/g,' '); }catch(e){}
   const {data}=await sb.auth.getSession();
   await applySession(data.session);
   cleanAuthParams();
   sb.auth.onAuthStateChange((_e,session)=>{ applySession(session); });
 }
-
 async function applySession(session){
   if(session&&session.user){
-    const u=session.user;
-    let prof=null;
+    const u=session.user; let prof=null;
     try{ const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){}
     if(!prof){ try{ await sb.from('profiles').upsert({id:u.id,email:u.email}); const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} }
     AUTH={id:u.id,email:u.email,role:prof&&prof.role};
@@ -173,11 +69,10 @@ async function applySession(session){
   } else { AUTH=null; STATE='signin'; }
   render();
 }
-
 async function signInEmail(){
   const email=($('authemail')&&$('authemail').value||'').trim();
   if(!email||!/.+@.+\..+/.test(email)){ MSG='Nhập email hợp lệ'; render(); return; }
-  try{ const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split('#')[0]}}); if(error) throw error; MSG='Đã gửi liên kết đăng nhập tới email — mở email và bấm vào link.'; }
+  try{ const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split('#')[0]}}); if(error) throw error; MSG='Đã gửi liên kết đăng nhập — mở email và bấm vào link.'; }
   catch(e){ MSG='Lỗi: '+e.message; }
   render();
 }
@@ -189,9 +84,7 @@ async function loadAll(){
   try{ const {data}=await sb.rpc('admin_stats'); DATA.stats=(data&&data[0])||null; }catch(e){}
   try{
     const {data}=await sb.from('payments').select('*').eq('status','pending').order('created_at',{ascending:true});
-    const pend=data||[];
-    const ids=[...new Set(pend.map(p=>p.user_id).filter(Boolean))];
-    let emails={};
+    const pend=data||[]; const ids=[...new Set(pend.map(p=>p.user_id).filter(Boolean))]; let emails={};
     if(ids.length){ try{ const {data:profs}=await sb.from('profiles').select('id,email').in('id',ids); (profs||[]).forEach(p=>emails[p.id]=p.email); }catch(e){} }
     pend.forEach(p=>p.email=emails[p.user_id]||p.user_id);
     DATA.pending=pend;
@@ -200,140 +93,155 @@ async function loadAll(){
   try{ const {data}=await sb.from('profiles').select('*').order('created_at',{ascending:false}).limit(80); DATA.users=data||[]; }catch(e){ DATA.users=[]; }
   render();
 }
-
-async function approvePay(id,uid){
-  try{
-    const until=new Date(); until.setFullYear(until.getFullYear()+1);
-    await sb.from('profiles').update({premium_until:until.toISOString()}).eq('id',uid);
-    await sb.from('payments').update({status:'approved',approved_by:AUTH.id,approved_at:new Date().toISOString()}).eq('id',id);
-    loadAll();
-  }catch(e){ alert('Lỗi: '+e.message); }
-}
+async function approvePay(id,uid){ try{ const until=new Date(); until.setFullYear(until.getFullYear()+1); await sb.from('profiles').update({premium_until:until.toISOString()}).eq('id',uid); await sb.from('payments').update({status:'approved',approved_by:AUTH.id,approved_at:new Date().toISOString()}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
 async function rejectPay(id){ try{ await sb.from('payments').update({status:'rejected'}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
 async function createVoucher(){
-  const code=($('vf_code').value||'').trim().toUpperCase();
-  const discount=parseInt($('vf_discount').value||'0',10);
-  const maxRaw=($('vf_max').value||'').trim();
+  const code=($('vf_code').value||'').trim().toUpperCase(); const discount=parseInt($('vf_discount').value||'0',10); const maxRaw=($('vf_max').value||'').trim();
   if(!code||!discount){ alert('Nhập mã và số tiền giảm'); return; }
-  try{ await sb.from('vouchers').insert({code,discount_amount:discount,max_uses:maxRaw?parseInt(maxRaw,10):null}); loadAll(); }
-  catch(e){ alert('Lỗi: '+e.message); }
+  try{ await sb.from('vouchers').insert({code,discount_amount:discount,max_uses:maxRaw?parseInt(maxRaw,10):null}); loadAll(); }catch(e){ alert('Lỗi: '+e.message); }
 }
 async function toggleVoucher(id,active){ try{ await sb.from('vouchers').update({active:!active}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
+function nav(v){ UI.view=v; render(); window.scrollTo(0,0); }
 
-function topbar(){
-  return `<div class="topbar">
-    <div class="brand"><div class="brand-mark">${LOGO}</div><h1>EQ GYM <span>Quản trị</span></h1></div>
-    <div class="topbar-right">
-      <a class="who" href="../">← Về app học</a>
-      ${AUTH?`<span class="who">${esc(AUTH.email)}</span><button class="btn" onclick="signOut()">Đăng xuất</button>`:''}
+/* ===== GATE SCREENS ===== */
+function renderGate(){
+  return `<div style="min-height:100vh;max-width:480px;margin:0 auto;position:relative;background:#F5F8FA;box-shadow:0 0 40px rgba(15,25,35,.08)">
+    <div style="background:linear-gradient(150deg,#0F1923,#123A34 60%,#0A8C77 130%);padding:calc(env(safe-area-inset-top) + 60px) 26px 46px;text-align:center;color:#fff">
+      <div style="width:56px;height:56px;border-radius:16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">${LOGOW}</div>
+      <h1 style="margin:0;font-family:'Space Grotesk';font-size:21px;font-weight:700">EQ GYM <span style="color:#0FB89B">Quản trị</span></h1>
+      <p style="color:#B9C6D4;font-size:12.5px;margin:8px 0 0;font-weight:600">Dùng đúng tài khoản đã được cấp quyền admin</p>
+    </div>
+    <div style="padding:26px 20px">
+      <input id="authemail" type="email" placeholder="Email của bạn" style="width:100%;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;padding:14px;font-size:14px">
+      <button onclick="signInEmail()" style="width:100%;margin-top:12px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px">Gửi liên kết đăng nhập ✉️</button>
+      <button onclick="signInGoogle()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px">Đăng nhập với Google</button>
+      ${MSG?`<p style="font-size:12px;color:#5C6B7A;margin:12px 0 0;font-weight:600;text-align:center">${esc(MSG)}</p>`:''}
+      <p style="text-align:center;margin:22px 0 0"><a href="../" style="color:#5C6B7A;font-size:12px;font-weight:700">← Về app học</a></p>
     </div>
   </div>`;
 }
-
-function renderGate(){
-  return `<div class="page"><div class="gate">
-    <div class="brand-mark" style="width:52px;height:52px;border-radius:16px">${LOGO}</div>
-    <h1>Đăng nhập quản trị</h1>
-    <p>Trang riêng cho quản trị viên EQ GYM — dùng đúng tài khoản được cấp quyền admin.</p>
-    <input id="authemail" type="email" placeholder="Email của bạn">
-    <button class="btn btn-accent" onclick="signInEmail()">Gửi liên kết đăng nhập</button>
-    <button class="btn" style="margin-top:8px" onclick="signInGoogle()">Đăng nhập với Google</button>
-    ${MSG?`<p class="gate-msg">${esc(MSG)}</p>`:''}
-  </div></div>`;
-}
 function renderForbidden(){
-  return `<div class="page">${topbar()}<div class="gate">
-    <h1>Không có quyền truy cập</h1>
-    <p>Tài khoản <b>${esc(AUTH.email)}</b> chưa được cấp quyền quản trị. Nếu đây là nhầm lẫn, liên hệ người quản lý hệ thống để được cấp quyền admin.</p>
-    <button class="btn" onclick="signOut()">Đăng xuất</button>
-  </div></div>`;
+  return `<div style="min-height:100vh;max-width:480px;margin:0 auto;position:relative;background:#F5F8FA;box-shadow:0 0 40px rgba(15,25,35,.08);padding:calc(env(safe-area-inset-top) + 60px) 24px;text-align:center">
+    <div style="font-size:36px">🔒</div>
+    <h1 style="margin:14px 0 0;font-family:'Space Grotesk';font-size:19px;font-weight:700">Không có quyền truy cập</h1>
+    <p style="color:#5C6B7A;font-size:13px;margin:10px 0 0;line-height:1.6;font-weight:600">Tài khoản <b style="color:#0F1923">${esc(AUTH.email)}</b> chưa được cấp quyền quản trị.</p>
+    <button onclick="signOut()" style="width:100%;margin-top:20px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px">Đăng xuất</button>
+    <p style="margin-top:14px"><a href="../" style="color:#5C6B7A;font-size:12px;font-weight:700">← Về app học</a></p>
+  </div>`;
 }
 
-function kpi(label,val,cls){ return `<div class="kpi"><div class="kpi-label">${label}</div><div class="kpi-value num ${cls||''}">${val}</div></div>`; }
+/* ===== HEADER + BOTTOM NAV (khung giống app học) ===== */
+function header(title,sub){
+  return `<div style="display:flex;align-items:center;gap:11px;padding:calc(env(safe-area-inset-top) + 18px) 18px 4px">
+    ${LOGO}
+    <div style="flex:1;min-width:0"><h1 style="margin:0;font-family:'Space Grotesk';font-size:18px;font-weight:700;letter-spacing:-.2px">${title}</h1>${sub?`<p style="margin:1px 0 0;color:#5C6B7A;font-size:11px;font-weight:700">${sub}</p>`:''}</div>
+    <a href="../" style="width:40px;height:40px;border-radius:12px;background:#fff;border:1px solid #E3E8EE;color:#0F1923;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Về app học">⌂</a>
+    <button onclick="signOut()" style="width:40px;height:40px;border-radius:12px;background:#fff;border:1px solid #E3E8EE;color:#0F1923;font-size:16px;cursor:pointer" title="Đăng xuất">🚪</button>
+  </div>`;
+}
+function bottomNav(){
+  const items=[['overview','◧','Tổng quan'],['pending','✓','Duyệt'],['vouchers','🏷️','Voucher'],['users','👥','Học viên']];
+  let h=`<div style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(255,255,255,.97);backdrop-filter:blur(14px);border-top:1px solid #E3E8EE;display:flex;padding:6px 0 calc(env(safe-area-inset-bottom) + 8px);z-index:40">`;
+  items.forEach(it=>{ const active=UI.view===it[0];
+    h+=`<button onclick="nav('${it[0]}')" style="flex:1;text-align:center;background:none;border:none;color:${active?'#0A6E5D':'#5C6B7A'};font-size:10px;font-weight:800;display:flex;flex-direction:column;gap:3px;align-items:center;cursor:pointer;padding:6px 0;min-height:52px">
+      <span style="font-size:18px;line-height:1">${it[1]}</span>${it[2]}${(it[0]==='pending'&&DATA.pending&&DATA.pending.length)?`<span style="position:absolute;margin:-20px 0 0 22px;background:#E85B5B;color:#fff;font-size:9px;font-weight:800;border-radius:999px;min-width:15px;height:15px;display:flex;align-items:center;justify-content:center;padding:0 3px">${DATA.pending.length}</span>`:''}
+    </button>`;
+  });
+  return h+`</div>`;
+}
+function card(inner,style){ return `<div style="background:#fff;border:1px solid #E3E8EE;border-radius:16px;padding:14px;margin-bottom:12px;${style||''}">${inner}</div>`; }
+function pill(text,kind){ const c={good:'background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff',off:'background:#E3E8EE;color:#5C6B7A',warn:'background:#FDECEC;color:#C74848'}[kind||'off']; return `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;${c}">${text}</span>`; }
 
-function renderDashboard(){
+/* ===== VIEWS ===== */
+function viewOverview(){
   const st=DATA.stats;
-  let h=topbar();
-  h+=`<div class="page">`;
-  h+=`<div class="kpis">${st?[
-    kpi('Học viên',fmt(st.total_users)),
-    kpi('Premium',fmt(st.premium_users)),
-    kpi('Chờ duyệt',fmt(st.pending_payments),st.pending_payments>0?'':''),
-    kpi('Doanh thu',fmt(st.revenue)+'đ')
-  ].join(''):'<p class="who">Đang tải thống kê...</p>'}</div>`;
-
-  // Pending payments
-  h+=`<section><div class="sec-head"><h2>Chờ duyệt thanh toán</h2><span class="sec-count">${DATA.pending?DATA.pending.length+' đơn':''}</span></div><div class="card">`;
-  if(DATA.pending==null) h+=`<div class="empty">Đang tải...</div>`;
-  else if(!DATA.pending.length) h+=`<div class="empty">✅ Không có yêu cầu chờ duyệt.</div>`;
-  else{
-    h+=`<div class="table-wrap"><table><thead><tr><th>Học viên</th><th>Mã CK</th><th>Voucher</th><th>Số tiền</th><th>Thời gian</th><th></th></tr></thead><tbody>`;
-    DATA.pending.forEach(p=>{
-      h+=`<tr><td class="email">${esc(p.email)}</td><td class="mono">${esc(p.code||'—')}</td><td>${p.voucher_code?`<span class="pill pill-good">${esc(p.voucher_code)} · -${fmt(p.discount_amount||0)}đ</span>`:'—'}</td><td class="mono">${fmt(p.amount||0)}đ</td><td>${new Date(p.created_at).toLocaleString('vi-VN')}</td><td><div class="row-actions"><button class="btn btn-accent" onclick="approvePay('${p.id}','${p.user_id}')">Duyệt</button><button class="btn" onclick="rejectPay('${p.id}')">Từ chối</button></div></td></tr>`;
-    });
-    h+=`</tbody></table></div>`;
-    h+=`<div class="card-list">`;
-    DATA.pending.forEach(p=>{
-      h+=`<div class="row-card"><div class="row-top"><b>${esc(p.email)}</b><span class="mono">${fmt(p.amount||0)}đ</span></div><div class="row-meta">Mã CK: ${esc(p.code||'—')} · ${new Date(p.created_at).toLocaleString('vi-VN')}</div>${p.voucher_code?`<div class="row-extra"><span class="pill pill-good">${esc(p.voucher_code)} · -${fmt(p.discount_amount||0)}đ</span></div>`:''}<div class="row-actions"><button class="btn btn-accent" onclick="approvePay('${p.id}','${p.user_id}')">Duyệt</button><button class="btn" onclick="rejectPay('${p.id}')">Từ chối</button></div></div>`;
-    });
-    h+=`</div>`;
-  }
-  h+=`</div></section>`;
-
-  // Vouchers
-  h+=`<section><div class="sec-head"><h2>Mã giảm giá</h2></div><div class="card">
-    <div class="voucher-form">
-      <input id="vf_code" placeholder="MÃ (vd EQGYM199K)">
-      <input id="vf_discount" type="number" placeholder="Giảm (đ)">
-      <input id="vf_max" type="number" placeholder="Lượt (trống = ∞)">
-      <button class="btn btn-dark" onclick="createVoucher()">+ Tạo mã</button>
+  let h=header('Tổng quan','Số liệu toàn hệ thống');
+  h+=`<div style="padding:14px 16px 90px">`;
+  h+=`<div style="background:linear-gradient(150deg,#0F1923,#123A34 60%,#0A8C77 130%);border-radius:20px;padding:18px;color:#fff;box-shadow:0 14px 34px rgba(15,25,35,.22);margin-bottom:14px">
+    <div style="font-family:'Space Grotesk';font-weight:700;letter-spacing:2px;font-size:10.5px;color:#0FB89B">DOANH THU ĐÃ DUYỆT</div>
+    <div style="font-family:'Space Grotesk';font-size:30px;font-weight:800;margin-top:4px">${st?fmt(st.revenue)+'đ':'—'}</div>
+  </div>`;
+  if(st){
+    h+=`<div style="display:flex;gap:10px;margin-bottom:6px">
+      ${card(`<div style="font-size:22px;font-weight:800;font-family:'Space Grotesk'">${fmt(st.total_users)}</div><div style="font-size:10.5px;color:#5C6B7A;font-weight:700;margin-top:2px">Học viên</div>`,'flex:1;text-align:center;margin-bottom:0')}
+      ${card(`<div style="font-size:22px;font-weight:800;font-family:'Space Grotesk';color:#0A8C77">${fmt(st.premium_users)}</div><div style="font-size:10.5px;color:#5C6B7A;font-weight:700;margin-top:2px">Premium</div>`,'flex:1;text-align:center;margin-bottom:0')}
+      ${card(`<div style="font-size:22px;font-weight:800;font-family:'Space Grotesk';color:${st.pending_payments>0?'#E85B5B':'#0F1923'}">${fmt(st.pending_payments)}</div><div style="font-size:10.5px;color:#5C6B7A;font-weight:700;margin-top:2px">Chờ duyệt</div>`,'flex:1;text-align:center;margin-bottom:0')}
     </div>`;
-  if(DATA.vouchers==null) h+=`<div class="empty">Đang tải...</div>`;
-  else if(!DATA.vouchers.length) h+=`<div class="empty">Chưa có mã nào.</div>`;
+  } else h+=`<p style="color:#5C6B7A;font-weight:600">Đang tải thống kê...</p>`;
+  h+=`</div>`;
+  return h;
+}
+function viewPending(){
+  let h=header('Chờ duyệt','Yêu cầu nâng cấp Premium');
+  h+=`<div style="padding:14px 16px 90px">`;
+  if(DATA.pending==null) h+=`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p>`;
+  else if(!DATA.pending.length) h+=`<div style="text-align:center;color:#5C6B7A;padding:50px 20px;font-weight:600"><div style="font-size:34px">✅</div><p>Không có yêu cầu chờ duyệt.</p></div>`;
+  else DATA.pending.forEach(p=>{
+    h+=card(`<h4 style="margin:0 0 6px;font-size:13.5px;font-weight:800">💳 ${esc(p.email)}</h4>
+      <div style="font-size:11px;color:#5C6B7A;font-weight:700">Mã CK: ${esc(p.code||'—')} · ${new Date(p.created_at).toLocaleString('vi-VN')}</div>
+      <p style="margin:6px 0;font-size:13.5px">Số tiền: <b>${fmt(p.amount||0)}đ</b></p>
+      ${p.voucher_code?`<div style="margin-bottom:8px">${pill(esc(p.voucher_code)+' · -'+fmt(p.discount_amount||0)+'đ','good')}</div>`:''}
+      <button onclick="approvePay('${p.id}','${p.user_id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:44px">Duyệt · +1 năm Premium</button>
+      <button onclick="rejectPay('${p.id}')" style="width:100%;margin-top:8px;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:42px">Từ chối</button>`);
+  });
+  h+=`</div>`;
+  return h;
+}
+function viewVouchers(){
+  let h=header('Mã giảm giá','Tạo & quản lý voucher');
+  h+=`<div style="padding:14px 16px 90px">`;
+  h+=card(`<div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="vf_code" placeholder="MÃ (vd EQGYM199K)" style="flex:1;min-width:120px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:13px;text-transform:uppercase">
+      <input id="vf_discount" type="number" placeholder="Giảm (đ)" style="width:100px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:13px">
+      <input id="vf_max" type="number" placeholder="Lượt (trống=∞)" style="width:120px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:13px">
+    </div>
+    <button onclick="createVoucher()" style="width:100%;margin-top:10px;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:#0F1923;color:#fff;min-height:44px">+ Tạo mã mới</button>`);
+  if(DATA.vouchers==null) h+=`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p>`;
+  else if(!DATA.vouchers.length) h+=`<p style="color:#5C6B7A;font-weight:600">Chưa có mã nào.</p>`;
+  else DATA.vouchers.forEach(v=>{
+    h+=card(`<div style="display:flex;align-items:center;gap:10px">
+      <div style="flex:1;min-width:0"><b style="font-family:'Space Grotesk';font-size:14px">${esc(v.code)}</b> ${pill(v.active?'Đang bật':'Đã tắt',v.active?'good':'off')}
+      <div style="font-size:11.5px;color:#5C6B7A;font-weight:600;margin-top:3px">Giảm ${fmt(v.discount_amount)}đ · Đã dùng ${v.used_count}${v.max_uses!=null?'/'+v.max_uses:''}</div></div>
+      <button onclick="toggleVoucher('${v.id}',${v.active})" style="border:1px solid #E3E8EE;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:38px">${v.active?'Tắt':'Bật'}</button>
+    </div>`,'padding:12px 14px');
+  });
+  h+=`</div>`;
+  return h;
+}
+function viewUsers(){
+  let h=header('Học viên',DATA.users?DATA.users.length+' gần đây':'');
+  h+=`<div style="padding:14px 16px 90px">`;
+  if(DATA.users==null) h+=`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p>`;
+  else if(!DATA.users.length) h+=`<p style="color:#5C6B7A;font-weight:600">Chưa có học viên.</p>`;
   else{
-    h+=`<div class="table-wrap"><table><thead><tr><th>Mã</th><th>Giảm</th><th>Đã dùng</th><th>Trạng thái</th><th></th></tr></thead><tbody>`;
-    DATA.vouchers.forEach(v=>{
-      h+=`<tr><td class="mono">${esc(v.code)}</td><td class="mono">${fmt(v.discount_amount)}đ</td><td class="mono">${v.used_count}${v.max_uses!=null?'/'+v.max_uses:''}</td><td><span class="pill ${v.active?'pill-good':'pill-off'}">${v.active?'Đang bật':'Đã tắt'}</span></td><td><button class="btn" onclick="toggleVoucher('${v.id}',${v.active})">${v.active?'Tắt':'Bật'}</button></td></tr>`;
-    });
-    h+=`</tbody></table></div>`;
-    h+=`<div class="card-list">`;
-    DATA.vouchers.forEach(v=>{
-      h+=`<div class="row-card"><div class="row-top"><b class="mono">${esc(v.code)}</b><span class="pill ${v.active?'pill-good':'pill-off'}">${v.active?'Đang bật':'Đã tắt'}</span></div><div class="row-meta">Giảm ${fmt(v.discount_amount)}đ · Đã dùng ${v.used_count}${v.max_uses!=null?'/'+v.max_uses:''}</div><div class="row-actions"><button class="btn" onclick="toggleVoucher('${v.id}',${v.active})">${v.active?'Tắt':'Bật'}</button></div></div>`;
+    h+=`<div style="background:#fff;border:1px solid #E3E8EE;border-radius:16px;overflow:hidden">`;
+    DATA.users.forEach((u,i)=>{ const prem=u.premium_until&&new Date(u.premium_until)>new Date();
+      h+=`<div style="padding:12px 14px;display:flex;align-items:center;gap:10px;${i?'border-top:1px solid #E3E8EE':''}">
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.email||u.id)}</div><div style="font-size:10.5px;color:#5C6B7A;font-weight:600">${new Date(u.created_at).toLocaleDateString('vi-VN')}${u.role==='admin'?' · Admin':''}</div></div>
+        ${pill(prem?'★ Premium':'Free',prem?'good':'off')}
+      </div>`;
     });
     h+=`</div>`;
   }
-  h+=`</div></section>`;
-
-  // Users
-  h+=`<section><div class="sec-head"><h2>Học viên</h2><span class="sec-count">${DATA.users?'gần đây · '+DATA.users.length:''}</span></div><div class="card">`;
-  if(DATA.users==null) h+=`<div class="empty">Đang tải...</div>`;
-  else if(!DATA.users.length) h+=`<div class="empty">Chưa có học viên.</div>`;
-  else{
-    h+=`<div class="table-wrap"><table><thead><tr><th>Email</th><th>Ngày tham gia</th><th>Vai trò</th><th>Trạng thái</th></tr></thead><tbody>`;
-    DATA.users.forEach(u=>{
-      const prem=u.premium_until&&new Date(u.premium_until)>new Date();
-      h+=`<tr><td class="email">${esc(u.email||u.id)}</td><td>${new Date(u.created_at).toLocaleDateString('vi-VN')}</td><td>${u.role==='admin'?'<span class="pill pill-warn">Admin</span>':'Học viên'}</td><td><span class="pill ${prem?'pill-good':'pill-off'}">${prem?'★ Premium':'Free'}</span></td></tr>`;
-    });
-    h+=`</tbody></table></div>`;
-    h+=`<div class="card-list">`;
-    DATA.users.forEach(u=>{
-      const prem=u.premium_until&&new Date(u.premium_until)>new Date();
-      h+=`<div class="row-card"><div class="row-top"><b>${esc(u.email||u.id)}</b><span class="pill ${prem?'pill-good':'pill-off'}">${prem?'★ Premium':'Free'}</span></div><div class="row-meta">${new Date(u.created_at).toLocaleDateString('vi-VN')}${u.role==='admin'?' · Admin':''}</div></div>`;
-    });
-    h+=`</div>`;
-  }
-  h+=`</div></section>`;
-
   h+=`</div>`;
   return h;
 }
 
+function renderDashboard(){
+  let main='';
+  if(UI.view==='overview') main=viewOverview();
+  else if(UI.view==='pending') main=viewPending();
+  else if(UI.view==='vouchers') main=viewVouchers();
+  else if(UI.view==='users') main=viewUsers();
+  return `<div style="min-height:100vh;max-width:480px;margin:0 auto;position:relative;background:#F5F8FA;box-shadow:0 0 40px rgba(15,25,35,.08)">${main}</div>${bottomNav()}`;
+}
+
 function render(){
   const app=$('app');
-  if(STATE==='loading'){ app.innerHTML=`<div class="page"><p class="who" style="margin-top:40px">Đang tải...</p></div>`; return; }
-  if(STATE==='signin'){ app.innerHTML=renderGate(); return; }
-  if(STATE==='forbidden'){ app.innerHTML=renderForbidden(); return; }
-  app.innerHTML=renderDashboard();
+  if(STATE==='loading') app.innerHTML=`<div style="min-height:100vh;max-width:480px;margin:0 auto;background:#F5F8FA"></div>`;
+  else if(STATE==='signin') app.innerHTML=renderGate();
+  else if(STATE==='forbidden') app.innerHTML=renderForbidden();
+  else app.innerHTML=renderDashboard();
 }
 
 render();
