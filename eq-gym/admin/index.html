@@ -15,8 +15,8 @@ html,body{margin:0;padding:0;background:#E9EDF2}
 body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;color:#0F1923;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 *{box-sizing:border-box}
 a{color:#0A6E5D;text-decoration:none}
-input{font-family:'Nunito',sans-serif}
-input:focus{outline:none;border-color:#0FB89B !important}
+input,select{font-family:'Nunito',sans-serif}
+input:focus,select:focus{outline:none;border-color:#0FB89B !important}
 button{font-family:inherit}
 ::-webkit-scrollbar{width:0;height:0}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -29,11 +29,17 @@ table{width:100%;border-collapse:collapse}
 const SUPA_URL="https://dpzlwlaekhfmorckukfm.supabase.co";
 const SUPA_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwemx3bGFla2hmbW9yY2t1a2ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NTk3NDMsImV4cCI6MjEwNTAzNTc0M30.BCSyd379ekTdrY3UKR9UCI72XGU6-xI02RldLSEYCIw";
 const sb=window.supabase.createClient(SUPA_URL,SUPA_ANON,{auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
+const PAGE_SIZE=10;
 
 let AUTH=null;         // {id,email,role}
 let STATE='loading';   // loading | signin | forbidden | ready
-let UI={view:'overview'};
-let DATA={stats:null,pending:null,vouchers:null,users:null};
+let UI={
+  view:'overview',
+  usersSearch:'', usersSort:'created_desc', usersPage:0,
+  pendingSearch:'', pendingSort:'date_asc', pendingPage:0,
+  vouchersSearch:'', vouchersSort:'date_desc', vouchersPage:0
+};
+let DATA={stats:null,pending:null,vouchers:null,users:null,usersTotal:0};
 let MSG='';
 
 const $=id=>document.getElementById(id);
@@ -64,7 +70,7 @@ async function applySession(session){
     try{ const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){}
     if(!prof){ try{ await sb.from('profiles').upsert({id:u.id,email:u.email}); const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} }
     AUTH={id:u.id,email:u.email,role:prof&&prof.role};
-    STATE=(AUTH.role==='admin')?'ready':'forbidden';
+    STATE=(AUTH.role==='admin'||AUTH.role==='super_admin')?'ready':'forbidden';
     if(STATE==='ready') loadAll();
   } else { AUTH=null; STATE='signin'; }
   render();
@@ -89,10 +95,60 @@ async function loadAll(){
     pend.forEach(p=>p.email=emails[p.user_id]||p.user_id);
     DATA.pending=pend;
   }catch(e){ DATA.pending=[]; }
-  try{ const {data}=await sb.from('vouchers').select('*').order('created_at',{ascending:false}); DATA.vouchers=data||[]; }catch(e){ DATA.vouchers=[]; }
-  try{ const {data}=await sb.from('profiles').select('*').order('created_at',{ascending:false}).limit(80); DATA.users=data||[]; }catch(e){ DATA.users=[]; }
   render();
+  try{ const {data}=await sb.from('vouchers').select('*').order('created_at',{ascending:false}); DATA.vouchers=data||[]; }catch(e){ DATA.vouchers=[]; }
+  render();
+  await loadUsers();
 }
+
+/* ===== Users: phân trang + tìm kiếm + sắp xếp phía server (danh sách có thể rất dài) ===== */
+const USER_SORTS={
+  created_desc:{col:'created_at',asc:false,label:'Mới nhất'},
+  created_asc:{col:'created_at',asc:true,label:'Cũ nhất'},
+  email_asc:{col:'email',asc:true,label:'Email A-Z'},
+  email_desc:{col:'email',asc:false,label:'Email Z-A'}
+};
+async function loadUsers(){
+  const wasFocused=document.activeElement&&document.activeElement.id==='usersSearch';
+  const sd=USER_SORTS[UI.usersSort]||USER_SORTS.created_desc;
+  let q=sb.from('profiles').select('*',{count:'exact'});
+  if(UI.usersSearch.trim()) q=q.ilike('email','%'+UI.usersSearch.trim()+'%');
+  q=q.order(sd.col,{ascending:sd.asc});
+  const from=UI.usersPage*PAGE_SIZE;
+  q=q.range(from,from+PAGE_SIZE-1);
+  try{ const {data,count}=await q; DATA.users=data||[]; DATA.usersTotal=count||0; }catch(e){ DATA.users=[]; DATA.usersTotal=0; }
+  render();
+  if(wasFocused) refocus('usersSearch');
+}
+function refocus(id){ const el=$(id); if(el){ el.focus(); const v=el.value; el.value=''; el.value=v; } }
+function renderKeepFocus(id){ render(); refocus(id); }
+let _usersSearchT=null;
+function onUsersSearch(v){ UI.usersSearch=v; UI.usersPage=0; clearTimeout(_usersSearchT); _usersSearchT=setTimeout(loadUsers,350); }
+function onUsersSort(v){ UI.usersSort=v; UI.usersPage=0; loadUsers(); }
+function usersPageGo(d){ const maxPage=Math.max(0,Math.ceil(DATA.usersTotal/PAGE_SIZE)-1); UI.usersPage=Math.min(maxPage,Math.max(0,UI.usersPage+d)); loadUsers(); }
+
+/* ===== Pending & Voucher: danh sách vốn nhỏ — lọc/sắp/phân trang phía client ===== */
+const PENDING_SORTS={
+  date_asc:{col:'created_at',asc:true,label:'Cũ nhất trước'},
+  date_desc:{col:'created_at',asc:false,label:'Mới nhất trước'},
+  amount_desc:{col:'amount',asc:false,label:'Tiền cao→thấp'},
+  amount_asc:{col:'amount',asc:true,label:'Tiền thấp→cao'}
+};
+const VOUCHER_SORTS={
+  date_desc:{col:'created_at',asc:false,label:'Mới nhất'},
+  date_asc:{col:'created_at',asc:true,label:'Cũ nhất'},
+  code_asc:{col:'code',asc:true,label:'Mã A-Z'},
+  used_desc:{col:'used_count',asc:false,label:'Dùng nhiều nhất'}
+};
+function applySort(arr,col,asc){ return [...arr].sort((a,b)=>{ let x=a[col],y=b[col]; if(typeof x==='string') x=x.toLowerCase(); if(typeof y==='string') y=y.toLowerCase(); if(x==null) x=asc?-Infinity:Infinity; if(y==null) y=asc?-Infinity:Infinity; if(x<y) return asc?-1:1; if(x>y) return asc?1:-1; return 0; }); }
+function paginate(arr,page,pageSize){ const from=page*pageSize; return arr.slice(from,from+pageSize); }
+function onPendingSearch(v){ UI.pendingSearch=v; UI.pendingPage=0; renderKeepFocus('pendingSearch'); }
+function onPendingSort(v){ UI.pendingSort=v; UI.pendingPage=0; render(); }
+function pendingPageGo(d){ UI.pendingPage=Math.max(0,UI.pendingPage+d); render(); }
+function onVouchersSearch(v){ UI.vouchersSearch=v; UI.vouchersPage=0; renderKeepFocus('vouchersSearch'); }
+function onVouchersSort(v){ UI.vouchersSort=v; UI.vouchersPage=0; render(); }
+function vouchersPageGo(d){ UI.vouchersPage=Math.max(0,UI.vouchersPage+d); render(); }
+
 async function approvePay(id,uid){ try{ const until=new Date(); until.setFullYear(until.getFullYear()+1); await sb.from('profiles').update({premium_until:until.toISOString()}).eq('id',uid); await sb.from('payments').update({status:'approved',approved_by:AUTH.id,approved_at:new Date().toISOString()}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
 async function rejectPay(id){ try{ await sb.from('payments').update({status:'rejected'}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
 async function createVoucher(){
@@ -101,6 +157,12 @@ async function createVoucher(){
   try{ await sb.from('vouchers').insert({code,discount_amount:discount,max_uses:maxRaw?parseInt(maxRaw,10):null}); loadAll(); }catch(e){ alert('Lỗi: '+e.message); }
 }
 async function toggleVoucher(id,active){ try{ await sb.from('vouchers').update({active:!active}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
+
+/* ===== Super admin: đổi role / xoá Premium / khoá tài khoản ===== */
+async function changeRole(uid,role){ try{ const {error}=await sb.rpc('admin_set_role',{p_user_id:uid,p_role:role}); if(error) throw error; loadUsers(); }catch(e){ alert('Lỗi: '+e.message); loadUsers(); } }
+async function revokePremium(uid){ if(!confirm('Xoá Premium của học viên này?')) return; try{ const {error}=await sb.rpc('admin_revoke_premium',{p_user_id:uid}); if(error) throw error; loadUsers(); }catch(e){ alert('Lỗi: '+e.message); } }
+async function banUser(uid,currentlyBanned){ if(!confirm(currentlyBanned?'Mở khoá tài khoản này?':'Khoá tài khoản này? Học viên sẽ không đăng nhập/luyện tập được nữa.')) return; try{ const {error}=await sb.rpc('admin_set_banned',{p_user_id:uid,p_banned:!currentlyBanned}); if(error) throw error; loadUsers(); }catch(e){ alert('Lỗi: '+e.message); } }
+
 function nav(v){ UI.view=v; render(); window.scrollTo(0,0); }
 
 /* ===== GATE SCREENS ===== */
@@ -151,6 +213,23 @@ function bottomNav(){
 }
 function card(inner,style){ return `<div style="background:#fff;border:1px solid #E3E8EE;border-radius:16px;padding:14px;margin-bottom:12px;${style||''}">${inner}</div>`; }
 function pill(text,kind){ const c={good:'background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff',off:'background:#E3E8EE;color:#5C6B7A',warn:'background:#FDECEC;color:#C74848'}[kind||'off']; return `<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;${c}">${text}</span>`; }
+function searchSortBar(inputId,placeholder,searchVal,onSearchFn,sortId,sortOptions,sortVal,onSortFn){
+  return `<div style="display:flex;gap:8px;margin-bottom:12px">
+    <input id="${inputId}" value="${esc(searchVal)}" oninput="${onSearchFn}(this.value)" placeholder="${placeholder}" style="flex:1;min-width:0;background:#fff;border:1px solid #E3E8EE;border-radius:12px;padding:11px 13px;font-size:13px">
+    <select id="${sortId}" onchange="${onSortFn}(this.value)" style="background:#fff;border:1px solid #E3E8EE;border-radius:12px;padding:0 8px;font-size:12px;font-weight:700;color:#0F1923;flex:0 0 auto">
+      ${sortOptions.map(o=>`<option value="${o.value}" ${o.value===sortVal?'selected':''}>${o.label}</option>`).join('')}
+    </select>
+  </div>`;
+}
+function pager(page,total,pageSize,onPrev,onNext){
+  if(total<=pageSize) return '';
+  const maxPage=Math.max(0,Math.ceil(total/pageSize)-1);
+  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 2px 2px">
+    <button onclick="${onPrev}" ${page<=0?'disabled':''} style="border:1px solid #E3E8EE;background:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;opacity:${page<=0?.4:1}">‹ Trước</button>
+    <span style="font-size:11.5px;color:#5C6B7A;font-weight:700">Trang ${page+1}/${maxPage+1} · ${fmt(total)} mục</span>
+    <button onclick="${onNext}" ${page>=maxPage?'disabled':''} style="border:1px solid #E3E8EE;background:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;opacity:${page>=maxPage?.4:1}">Sau ›</button>
+  </div>`;
+}
 
 /* ===== VIEWS ===== */
 function viewOverview(){
@@ -174,9 +253,18 @@ function viewOverview(){
 function viewPending(){
   let h=header('Chờ duyệt','Yêu cầu nâng cấp Premium');
   h+=`<div style="padding:14px 16px 90px">`;
-  if(DATA.pending==null) h+=`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p>`;
-  else if(!DATA.pending.length) h+=`<div style="text-align:center;color:#5C6B7A;padding:50px 20px;font-weight:600"><div style="font-size:34px">✅</div><p>Không có yêu cầu chờ duyệt.</p></div>`;
-  else DATA.pending.forEach(p=>{
+  if(DATA.pending==null){ h+=`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p></div>`; return h; }
+  if(!DATA.pending.length){ h+=`<div style="text-align:center;color:#5C6B7A;padding:50px 20px;font-weight:600"><div style="font-size:34px">✅</div><p>Không có yêu cầu chờ duyệt.</p></div></div>`; return h; }
+  h+=searchSortBar('pendingSearch','Tìm theo email hoặc mã CK...',UI.pendingSearch,'onPendingSearch','pendingSortSel',Object.entries(PENDING_SORTS).map(([v,d])=>({value:v,label:d.label})),UI.pendingSort,'onPendingSort');
+  const term=UI.pendingSearch.trim().toLowerCase();
+  let list=DATA.pending.filter(p=>!term||(p.email||'').toLowerCase().includes(term)||(p.code||'').toLowerCase().includes(term));
+  const total=list.length;
+  const sd=PENDING_SORTS[UI.pendingSort]||PENDING_SORTS.date_asc;
+  list=applySort(list,sd.col,sd.asc);
+  const maxPage=Math.max(0,Math.ceil(total/PAGE_SIZE)-1); if(UI.pendingPage>maxPage) UI.pendingPage=maxPage;
+  list=paginate(list,UI.pendingPage,PAGE_SIZE);
+  if(!total) h+=`<p style="color:#5C6B7A;font-weight:600;text-align:center;padding:20px 0">Không tìm thấy kết quả.</p>`;
+  list.forEach(p=>{
     h+=card(`<h4 style="margin:0 0 6px;font-size:13.5px;font-weight:800">💳 ${esc(p.email)}</h4>
       <div style="font-size:11px;color:#5C6B7A;font-weight:700">Mã CK: ${esc(p.code||'—')} · ${new Date(p.created_at).toLocaleString('vi-VN')}</div>
       <p style="margin:6px 0;font-size:13.5px">Số tiền: <b>${fmt(p.amount||0)}đ</b></p>
@@ -184,6 +272,7 @@ function viewPending(){
       <button onclick="approvePay('${p.id}','${p.user_id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:44px">Duyệt · +1 năm Premium</button>
       <button onclick="rejectPay('${p.id}')" style="width:100%;margin-top:8px;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:42px">Từ chối</button>`);
   });
+  h+=pager(UI.pendingPage,total,PAGE_SIZE,'pendingPageGo(-1)','pendingPageGo(1)');
   h+=`</div>`;
   return h;
 }
@@ -196,32 +285,58 @@ function viewVouchers(){
       <input id="vf_max" type="number" placeholder="Lượt (trống=∞)" style="width:120px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:13px">
     </div>
     <button onclick="createVoucher()" style="width:100%;margin-top:10px;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:#0F1923;color:#fff;min-height:44px">+ Tạo mã mới</button>`);
-  if(DATA.vouchers==null) h+=`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p>`;
-  else if(!DATA.vouchers.length) h+=`<p style="color:#5C6B7A;font-weight:600">Chưa có mã nào.</p>`;
-  else DATA.vouchers.forEach(v=>{
+  if(DATA.vouchers==null){ h+=`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p></div>`; return h; }
+  if(!DATA.vouchers.length){ h+=`<p style="color:#5C6B7A;font-weight:600">Chưa có mã nào.</p></div>`; return h; }
+  h+=searchSortBar('vouchersSearch','Tìm theo mã...',UI.vouchersSearch,'onVouchersSearch','vouchersSortSel',Object.entries(VOUCHER_SORTS).map(([v,d])=>({value:v,label:d.label})),UI.vouchersSort,'onVouchersSort');
+  const term=UI.vouchersSearch.trim().toLowerCase();
+  let list=DATA.vouchers.filter(v=>!term||v.code.toLowerCase().includes(term));
+  const total=list.length;
+  const sd=VOUCHER_SORTS[UI.vouchersSort]||VOUCHER_SORTS.date_desc;
+  list=applySort(list,sd.col,sd.asc);
+  const maxPage=Math.max(0,Math.ceil(total/PAGE_SIZE)-1); if(UI.vouchersPage>maxPage) UI.vouchersPage=maxPage;
+  list=paginate(list,UI.vouchersPage,PAGE_SIZE);
+  if(!total) h+=`<p style="color:#5C6B7A;font-weight:600;text-align:center;padding:20px 0">Không tìm thấy kết quả.</p>`;
+  list.forEach(v=>{
     h+=card(`<div style="display:flex;align-items:center;gap:10px">
       <div style="flex:1;min-width:0"><b style="font-family:'Space Grotesk';font-size:14px">${esc(v.code)}</b> ${pill(v.active?'Đang bật':'Đã tắt',v.active?'good':'off')}
       <div style="font-size:11.5px;color:#5C6B7A;font-weight:600;margin-top:3px">Giảm ${fmt(v.discount_amount)}đ · Đã dùng ${v.used_count}${v.max_uses!=null?'/'+v.max_uses:''}</div></div>
       <button onclick="toggleVoucher('${v.id}',${v.active})" style="border:1px solid #E3E8EE;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:38px">${v.active?'Tắt':'Bật'}</button>
     </div>`,'padding:12px 14px');
   });
+  h+=pager(UI.vouchersPage,total,PAGE_SIZE,'vouchersPageGo(-1)','vouchersPageGo(1)');
   h+=`</div>`;
   return h;
 }
 function viewUsers(){
-  let h=header('Học viên',DATA.users?DATA.users.length+' gần đây':'');
+  let h=header('Học viên',DATA.usersTotal?fmt(DATA.usersTotal)+' tổng':'');
   h+=`<div style="padding:14px 16px 90px">`;
+  h+=searchSortBar('usersSearch','Tìm theo email...',UI.usersSearch,'onUsersSearch','usersSortSel',Object.entries(USER_SORTS).map(([v,d])=>({value:v,label:d.label})),UI.usersSort,'onUsersSort');
+  const isSuper=AUTH.role==='super_admin';
   if(DATA.users==null) h+=`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p>`;
-  else if(!DATA.users.length) h+=`<p style="color:#5C6B7A;font-weight:600">Chưa có học viên.</p>`;
+  else if(!DATA.users.length) h+=`<p style="color:#5C6B7A;font-weight:600;text-align:center;padding:20px 0">Không tìm thấy học viên nào.</p>`;
   else{
-    h+=`<div style="background:#fff;border:1px solid #E3E8EE;border-radius:16px;overflow:hidden">`;
-    DATA.users.forEach((u,i)=>{ const prem=u.premium_until&&new Date(u.premium_until)>new Date();
-      h+=`<div style="padding:12px 14px;display:flex;align-items:center;gap:10px;${i?'border-top:1px solid #E3E8EE':''}">
-        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.email||u.id)}</div><div style="font-size:10.5px;color:#5C6B7A;font-weight:600">${new Date(u.created_at).toLocaleDateString('vi-VN')}${u.role==='admin'?' · Admin':''}</div></div>
-        ${pill(prem?'★ Premium':'Free',prem?'good':'off')}
-      </div>`;
+    DATA.users.forEach(u=>{
+      const prem=u.premium_until&&new Date(u.premium_until)>new Date();
+      const roleLabel=u.role==='super_admin'?' · Super Admin':u.role==='admin'?' · Admin':'';
+      const isSelf=u.id===AUTH.id;
+      h+=card(`<div style="display:flex;align-items:center;gap:10px;margin-bottom:${isSuper&&!isSelf?'10px':'0'}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.email||u.id)}${isSelf?' (bạn)':''}</div>
+          <div style="font-size:10.5px;color:#5C6B7A;font-weight:600">${new Date(u.created_at).toLocaleDateString('vi-VN')}${roleLabel}</div>
+        </div>
+        ${u.banned?pill('Đã khoá','warn'):pill(prem?'★ Premium':'Free',prem?'good':'off')}
+      </div>
+      ${isSuper&&!isSelf?`<div style="display:flex;gap:6px;flex-wrap:wrap">
+        <select onchange="changeRole('${u.id}',this.value)" style="flex:1;min-width:112px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:9px;padding:8px;font-size:11.5px;font-weight:700">
+          <option value="user" ${u.role==='user'||!u.role?'selected':''}>Học viên</option>
+          <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+          <option value="super_admin" ${u.role==='super_admin'?'selected':''}>Super Admin</option>
+        </select>
+        ${prem?`<button onclick="revokePremium('${u.id}')" style="border:1px solid #E3E8EE;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:800;cursor:pointer;background:#fff;color:#C74848">Xoá Premium</button>`:''}
+        <button onclick="banUser('${u.id}',${!!u.banned})" style="border:1px solid #E3E8EE;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:800;cursor:pointer;background:#fff;color:${u.banned?'#0A6E5D':'#C74848'}">${u.banned?'Mở khoá':'Khoá'}</button>
+      </div>`:''}`,'padding:12px 14px');
     });
-    h+=`</div>`;
+    h+=pager(UI.usersPage,DATA.usersTotal,PAGE_SIZE,'usersPageGo(-1)','usersPageGo(1)');
   }
   h+=`</div>`;
   return h;

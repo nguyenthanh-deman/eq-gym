@@ -41,8 +41,9 @@ Deno.serve(async (req) => {
     const user = userData?.user;
     if (!user) return json({ error: "unauthorized" }, 401);
 
-    // Kiểm tra Premium
-    const { data: prof } = await sb.from("profiles").select("premium_until").eq("id", user.id).maybeSingle();
+    // Kiểm tra khoá tài khoản + Premium
+    const { data: prof } = await sb.from("profiles").select("premium_until, banned").eq("id", user.id).maybeSingle();
+    if (prof?.banned) return json({ error: "banned" }, 403);
     const premium = prof?.premium_until && new Date(prof.premium_until) > new Date();
     if (!premium) return json({ error: "premium_required" }, 403);
 
