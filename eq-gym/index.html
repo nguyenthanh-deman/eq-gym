@@ -397,8 +397,8 @@ async function pullRemote(){ if(!BACKEND||!AUTH) return;
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmt(x){ return (x||0).toLocaleString('vi-VN'); }
 function isDone(n){ return S.done.includes(n); }
-function isPremium(){ return !!(!BACKEND || (AUTH && AUTH.premium_until && new Date(AUTH.premium_until)>new Date())); }
-function isAdmin(){ return AUTH && AUTH.role==='admin'; }
+function isPremium(){ return !!(!BACKEND || (AUTH && (AUTH.role==='admin'||AUTH.role==='super_admin' || (AUTH.premium_until && new Date(AUTH.premium_until)>new Date())))); }
+function isAdmin(){ return AUTH && (AUTH.role==='admin'||AUTH.role==='super_admin'); }
 function unlocked(n){ if(n===0) return true; if(!isPremium()) return false; return isDone(n-1); }
 function rankOf(d){ let r=RANKS[0]; for(const x of RANKS){ if(d>=x[0]) r=x; } return r; }
 function nextRank(d){ for(const x of RANKS){ if(d<x[0]) return x; } return null; }
@@ -755,7 +755,7 @@ function val(id){ const e=document.getElementById(id); return e?(e.value||'').tr
 function acctHtml(){
   if(!BACKEND) return `<div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 14px;font-size:12.5px;margin-bottom:12px;color:#5C6B7A;line-height:1.6;font-weight:600">☁️ Backend chưa cấu hình — app đang chạy <b style="color:#0F1923">chế độ local</b> (lưu trên máy này, mở khóa toàn bộ). Chủ app xem <b style="color:#0A6E5D">docs/SETUP-SUPABASE.md</b> để bật tài khoản & Premium.</div>`;
   if(AUTH){ const prem=isPremium();
-    return `<div style="margin-bottom:14px"><div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700">👤 <b style="color:#0A6E5D">${esc(AUTH.email||'Học viên')}</b> <span style="display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:6px;${prem?'background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff':'background:#E3E8EE;color:#5C6B7A'}">${prem?'★ PREMIUM':'Miễn phí'}</span>${prem&&AUTH.premium_until?`<div style="font-size:11px;color:#5C6B7A;margin-top:5px;font-weight:600">Premium đến ${new Date(AUTH.premium_until).toLocaleDateString('vi-VN')}</div>`:''}</div>
+    return `<div style="margin-bottom:14px"><div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700">👤 <b style="color:#0A6E5D">${esc(AUTH.email||'Học viên')}</b> <span style="display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:6px;${prem?'background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff':'background:#E3E8EE;color:#5C6B7A'}">${prem?'★ PREMIUM':'Miễn phí'}</span>${prem&&AUTH.premium_until?`<div style="font-size:11px;color:#5C6B7A;margin-top:5px;font-weight:600">Premium đến ${new Date(AUTH.premium_until).toLocaleDateString('vi-VN')}</div>`:(prem&&isAdmin()?`<div style="font-size:11px;color:#5C6B7A;margin-top:5px;font-weight:600">Premium theo quyền ${AUTH.role==='super_admin'?'Super Admin':'Admin'}</div>`:'')}</div>
       ${!prem?`<button onclick="UI.settingsOpen=false;showPremium()" style="width:100%;margin-top:10px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px">🚀 Nâng cấp Premium ${fmt(PREMIUM_PRICE)}đ/năm</button>`:''}
       ${prem&&COMMUNITY_URL?`<a href="${COMMUNITY_URL}" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;background:#fff;color:#0F1923;min-height:46px">👥 Vào cộng đồng EQ GYM</a>`:''}
       ${isAdmin()?`<a href="admin/" style="display:block;text-align:center;width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px;box-sizing:border-box">🛡️ Trang Quản trị</a>`:''}
@@ -989,6 +989,7 @@ function lessonIntro(n,l,M){
   return h;
 }
 function gotoPractice(){ const i=stepIdx('practice'); jumpStep(i>=0?i:STEPS.length-1); }
+function needPractice(n){ sfx('err'); toast('Hãy làm bài luyện tập trước khi hoàn thành buổi tập nhé! ✍️'); gotoPractice(); }
 function practiceCTA(label){
   if(!STEPS||stepIdx('practice')<0) return '';
   return `<div style="margin-top:18px;background:linear-gradient(150deg,#0F1923,#0A8C77 130%);border-radius:16px;padding:16px;text-align:center;color:#fff;box-shadow:0 10px 26px rgba(15,25,35,.18)">
@@ -1065,7 +1066,7 @@ function lessonPractice(n,step){
     <div><h4 style="margin:0;font-size:13.5px;color:#0A6E5D;font-weight:800">${res.by==='ai'?'Coach AI chấm':'Chấm offline (chưa nâng cấp Premium)'}</h4><div style="font-size:11px;color:#B27607;margin-top:2px;font-weight:800">${res.score>=80?'★★★ Xuất sắc':res.score>=55?'★★ Tốt':'★ Cần luyện thêm'} · Khung 4 trụ EQ</div>${prevSco!=null?`<div style="font-size:11.5px;font-weight:800;margin-top:3px;color:${res.score-prevSco>=0?'#0A8C77':'#C74848'}">${res.score-prevSco>=0?'▲ +'+(res.score-prevSco):'▼ '+(res.score-prevSco)} so với lần trước</div>`:''}</div></div>
     ${pillarBarsHtml(res.dims)}
     <div style="font-size:13.5px;margin-top:6px;line-height:1.65;color:#22303D">${esc(res.feedback)}</div>${res.tip?`<div style="font-size:12.5px;margin-top:9px;background:#fff;border-radius:11px;padding:9px 12px;border:1px dashed #0FB89B;line-height:1.55;color:#22303D"><b style="color:#0A6E5D">Gợi ý:</b> ${esc(res.tip)}</div>`:''}</div>`;
-  h+=`<div style="font-size:11.5px;color:#5C6B7A;margin-top:9px;line-height:1.55">${aiReady()?'Coach AI sẵn sàng chấm bài.':'Chưa bật AI — bài được chấm offline. Vào mục Tài khoản để thêm key (miễn phí).'}</div>`;
+  h+=`<div style="font-size:11.5px;color:#5C6B7A;margin-top:9px;line-height:1.55">${aiReady()?'Coach AI sẵn sàng chấm bài.':'Chưa bật AI — bài được chấm offline. Nâng cấp Premium để Coach AI chấm điểm & nhận xét.'}</div>`;
   h+=progressPanel(n);
   const hist=S.history[n]||[];
   if(hist.length){ h+=`<div style="margin-top:16px"><div style="font-family:'Space Grotesk';font-size:10.5px;font-weight:700;letter-spacing:1.5px;color:#2F6FBF">LỊCH SỬ LUYỆN TẬP (${hist.length})</div>`;
@@ -1128,7 +1129,9 @@ function fixedUI(){
     h+=`<div style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-top:1px solid #E3E8EE;display:flex;gap:10px;padding:12px 16px calc(env(safe-area-inset-bottom) + 12px);z-index:40">
       <button onclick="goStep(-1)" ${UI.step===0?'disabled':''} style="flex:0 0 96px;border:1px solid #E3E8EE;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:52px;opacity:${UI.step===0?.4:1}">‹ Lùi</button>`;
     if(step.kind!=='finish') h+=`<button onclick="goStep(1)" style="flex:1;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;box-shadow:0 6px 20px rgba(15,184,155,.28);min-height:52px">Tiếp tục ›</button>`;
-    else h+=`<button onclick="complete(${UI.n})" style="flex:1;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;background:${done?'linear-gradient(135deg,#4A9EFF,#2F6FBF)':'linear-gradient(135deg,#0FB89B,#0A8C77)'};color:#fff;box-shadow:0 6px 20px rgba(15,184,155,.28);min-height:52px">${done?(UI.n<29?'Sang buổi '+(UI.n+1)+' ›':'Về lộ trình'):'✓ Hoàn thành buổi tập'}</button>`;
+    else { const canFinish=done||!!S.graded[UI.n];
+      h+=`<button onclick="${done?`complete(${UI.n})`:(canFinish?`complete(${UI.n})`:`needPractice(${UI.n})`)}" style="flex:1;border:none;border-radius:14px;padding:14px;font-size:14.5px;font-weight:800;cursor:pointer;background:${done?'linear-gradient(135deg,#4A9EFF,#2F6FBF)':(canFinish?'linear-gradient(135deg,#0FB89B,#0A8C77)':'linear-gradient(135deg,#B8C2CC,#98A4AF)')};color:#fff;box-shadow:0 6px 20px rgba(15,184,155,.28);min-height:52px">${done?(UI.n<29?'Sang buổi '+(UI.n+1)+' ›':'Về lộ trình'):(canFinish?'✓ Hoàn thành buổi tập':'✍️ Làm bài luyện tập trước đã')}</button>`;
+    }
     h+=`</div>`;
   }
   if(UI.settingsOpen) h+=sheetSettings();
