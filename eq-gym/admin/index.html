@@ -34,12 +34,13 @@ const PAGE_SIZE=10;
 let AUTH=null;         // {id,email,role}
 let STATE='loading';   // loading | signin | forbidden | ready
 let UI={
-  view:'overview',
+  view:'overview', payTab:'pending',
   usersSearch:'', usersSort:'created_desc', usersPage:0,
   pendingSearch:'', pendingSort:'date_asc', pendingPage:0,
-  vouchersSearch:'', vouchersSort:'date_desc', vouchersPage:0
+  vouchersSearch:'', vouchersSort:'date_desc', vouchersPage:0,
+  historySearch:'', historySort:'date_desc', historyPage:0, historyStatus:'all'
 };
-let DATA={stats:null,pending:null,vouchers:null,users:null,usersTotal:0};
+let DATA={stats:null,pending:null,vouchers:null,users:null,usersTotal:0,history:null,historyTotal:0};
 let MSG='';
 
 const $=id=>document.getElementById(id);
@@ -149,6 +150,32 @@ function onVouchersSearch(v){ UI.vouchersSearch=v; UI.vouchersPage=0; renderKeep
 function onVouchersSort(v){ UI.vouchersSort=v; UI.vouchersPage=0; render(); }
 function vouchersPageGo(d){ UI.vouchersPage=Math.max(0,UI.vouchersPage+d); render(); }
 
+/* ===== Lịch sử giao dịch: phân trang + tìm + sắp phía server (ngày càng dài theo thời gian) ===== */
+const HISTORY_SORTS={
+  date_desc:{col:'created_at',asc:false,label:'Mới nhất'},
+  date_asc:{col:'created_at',asc:true,label:'Cũ nhất'},
+  amount_desc:{col:'amount',asc:false,label:'Tiền cao→thấp'},
+  amount_asc:{col:'amount',asc:true,label:'Tiền thấp→cao'}
+};
+function setPayTab(t){ UI.payTab=t; if(t==='history'&&DATA.history==null) loadHistory(); else render(); }
+async function loadHistory(){
+  const wasFocused=document.activeElement&&document.activeElement.id==='historySearch';
+  const sd=HISTORY_SORTS[UI.historySort]||HISTORY_SORTS.date_desc;
+  let q=sb.from('payments_history').select('*',{count:'exact'});
+  if(UI.historyStatus!=='all') q=q.eq('status',UI.historyStatus);
+  if(UI.historySearch.trim()) q=q.ilike('user_email','%'+UI.historySearch.trim()+'%');
+  q=q.order(sd.col,{ascending:sd.asc});
+  const from=UI.historyPage*PAGE_SIZE; q=q.range(from,from+PAGE_SIZE-1);
+  try{ const {data,count}=await q; DATA.history=data||[]; DATA.historyTotal=count||0; }catch(e){ DATA.history=[]; DATA.historyTotal=0; }
+  render();
+  if(wasFocused) refocus('historySearch');
+}
+function onHistorySearch(v){ UI.historySearch=v; UI.historyPage=0; clearTimeout(_historySearchT); _historySearchT=setTimeout(loadHistory,350); }
+let _historySearchT=null;
+function onHistorySort(v){ UI.historySort=v; UI.historyPage=0; loadHistory(); }
+function setHistoryStatus(s){ UI.historyStatus=s; UI.historyPage=0; loadHistory(); }
+function historyPageGo(d){ const maxPage=Math.max(0,Math.ceil(DATA.historyTotal/PAGE_SIZE)-1); UI.historyPage=Math.min(maxPage,Math.max(0,UI.historyPage+d)); loadHistory(); }
+
 async function approvePay(id,uid){ try{ const until=new Date(); until.setFullYear(until.getFullYear()+1); await sb.from('profiles').update({premium_until:until.toISOString()}).eq('id',uid); await sb.from('payments').update({status:'approved',approved_by:AUTH.id,approved_at:new Date().toISOString()}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
 async function rejectPay(id){ try{ await sb.from('payments').update({status:'rejected'}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
 async function createVoucher(){
@@ -250,9 +277,17 @@ function viewOverview(){
   h+=`</div>`;
   return h;
 }
+function payTabs(){
+  return `<div style="display:flex;gap:6px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:4px;margin-bottom:14px">
+    <button onclick="setPayTab('pending')" style="flex:1;border:none;border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;background:${UI.payTab==='pending'?'#0F1923':'transparent'};color:${UI.payTab==='pending'?'#fff':'#5C6B7A'}">Chờ duyệt</button>
+    <button onclick="setPayTab('history')" style="flex:1;border:none;border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;background:${UI.payTab==='history'?'#0F1923':'transparent'};color:${UI.payTab==='history'?'#fff':'#5C6B7A'}">Lịch sử</button>
+  </div>`;
+}
 function viewPending(){
   let h=header('Chờ duyệt','Yêu cầu nâng cấp Premium');
   h+=`<div style="padding:14px 16px 90px">`;
+  h+=payTabs();
+  if(UI.payTab==='history'){ h+=viewHistoryList(); h+=`</div>`; return h; }
   if(DATA.pending==null){ h+=`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p></div>`; return h; }
   if(!DATA.pending.length){ h+=`<div style="text-align:center;color:#5C6B7A;padding:50px 20px;font-weight:600"><div style="font-size:34px">✅</div><p>Không có yêu cầu chờ duyệt.</p></div></div>`; return h; }
   h+=searchSortBar('pendingSearch','Tìm theo email hoặc mã CK...',UI.pendingSearch,'onPendingSearch','pendingSortSel',Object.entries(PENDING_SORTS).map(([v,d])=>({value:v,label:d.label})),UI.pendingSort,'onPendingSort');
@@ -274,6 +309,23 @@ function viewPending(){
   });
   h+=pager(UI.pendingPage,total,PAGE_SIZE,'pendingPageGo(-1)','pendingPageGo(1)');
   h+=`</div>`;
+  return h;
+}
+function viewHistoryList(){
+  let h='';
+  const statusOpts=[['all','Tất cả'],['approved','Đã duyệt'],['rejected','Từ chối']];
+  h+=`<div style="display:flex;gap:6px;margin-bottom:10px">${statusOpts.map(([v,l])=>`<button onclick="setHistoryStatus('${v}')" style="flex:1;border:1px solid ${UI.historyStatus===v?'#0FB89B':'#E3E8EE'};border-radius:10px;padding:8px;font-size:11.5px;font-weight:800;cursor:pointer;background:${UI.historyStatus===v?'#EAFBF6':'#fff'};color:${UI.historyStatus===v?'#0A6E5D':'#5C6B7A'}">${l}</button>`).join('')}</div>`;
+  h+=searchSortBar('historySearch','Tìm theo email...',UI.historySearch,'onHistorySearch','historySortSel',Object.entries(HISTORY_SORTS).map(([v,d])=>({value:v,label:d.label})),UI.historySort,'onHistorySort');
+  if(DATA.history==null) return h+`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p>`;
+  if(!DATA.history.length) return h+`<p style="color:#5C6B7A;font-weight:600;text-align:center;padding:20px 0">Chưa có giao dịch nào.</p>`;
+  DATA.history.forEach(p=>{
+    const sp=p.status==='approved'?pill('Đã duyệt','good'):p.status==='rejected'?pill('Từ chối','warn'):pill('Chờ duyệt','off');
+    h+=card(`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><h4 style="margin:0;font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.user_email||p.user_id)}</h4>${sp}</div>
+      <div style="font-size:11px;color:#5C6B7A;font-weight:700">Mã CK: ${esc(p.code||'—')} · ${new Date(p.created_at).toLocaleString('vi-VN')}</div>
+      <p style="margin:6px 0 0;font-size:13.5px">Số tiền: <b>${fmt(p.amount||0)}đ</b>${p.voucher_code?` · ${pill(esc(p.voucher_code),'good')}`:''}</p>
+      ${p.approved_at?`<div style="font-size:10.5px;color:#8A97A5;font-weight:600;margin-top:4px">Xử lý lúc ${new Date(p.approved_at).toLocaleString('vi-VN')}</div>`:''}`);
+  });
+  h+=pager(UI.historyPage,DATA.historyTotal,PAGE_SIZE,'historyPageGo(-1)','historyPageGo(1)');
   return h;
 }
 function viewVouchers(){

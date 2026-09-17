@@ -833,7 +833,25 @@ function modalPay(){
   }
   return `<div onclick="if(event.target===this)closePay()" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:75;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">${inner}</div></div>`;
 }
-async function submitPayment(code){ if(!BACKEND||!AUTH){ toast('Cần đăng nhập'); return; } const msg=document.getElementById('paymsg'); const disc=UI.voucherDiscount||0; const amt=Math.max(0,PREMIUM_PRICE-disc); try{ await sb.from('payments').insert({user_id:AUTH.id,amount:amt,code,voucher_code:UI.voucherCode||null,discount_amount:disc,status:'pending'}); if(msg) msg.innerHTML='✅ Đã ghi nhận. Admin sẽ duyệt và kích hoạt Premium cho bạn sớm. Cảm ơn bạn!'; toast('Đã gửi yêu cầu — chờ duyệt'); UI.voucherCode=''; UI.voucherDiscount=0; }catch(e){ if(msg) msg.textContent='Lỗi: '+e.message; } }
+let _payBusy=false;
+async function submitPayment(code){
+  if(!BACKEND||!AUTH){ toast('Cần đăng nhập'); return; }
+  if(_payBusy) return; _payBusy=true;
+  const msg=document.getElementById('paymsg'); const disc=UI.voucherDiscount||0; const amt=Math.max(0,PREMIUM_PRICE-disc);
+  try{
+    const {error}=await sb.from('payments').insert({user_id:AUTH.id,amount:amt,code,voucher_code:UI.voucherCode||null,discount_amount:disc,status:'pending'});
+    if(error){
+      if(error.code==='23505'||/duplicate key/i.test(error.message)){
+        if(msg) msg.innerHTML='⏳ Bạn đã có 1 yêu cầu chuyển khoản đang chờ admin duyệt rồi — không cần gửi lại, đợi admin xử lý nhé!';
+        toast('Đã có yêu cầu đang chờ duyệt');
+      } else throw error;
+    } else {
+      if(msg) msg.innerHTML='✅ Đã ghi nhận. Admin sẽ duyệt và kích hoạt Premium cho bạn sớm. Cảm ơn bạn!';
+      toast('Đã gửi yêu cầu — chờ duyệt'); UI.voucherCode=''; UI.voucherDiscount=0;
+    }
+  }catch(e){ if(msg) msg.textContent='Lỗi: '+e.message; }
+  _payBusy=false;
+}
 async function submitBook(){ if(!BACKEND||!AUTH){ toast('Cần đăng nhập'); return; } const name=val('bkname'),phone=val('bkphone'),addr=val('bkaddr'),msg=document.getElementById('paymsg'); if(!name||!phone||!addr){ if(msg) msg.textContent='Điền đủ thông tin nhé'; return; } try{ let taken=0; try{ const {data}=await sb.rpc('book_seats_taken'); taken=data||0; }catch(e){} if(taken>=50){ if(msg) msg.textContent='Rất tiếc, 50 suất sách đã hết. Cảm ơn bạn đã quan tâm!'; return; } await sb.from('book_claims').insert({user_id:AUTH.id,full_name:name,phone,address:addr,seq:taken+1}); if(msg) msg.innerHTML='✅ Đã nhận thông tin! Sách sẽ được gửi tới bạn sớm. Cảm ơn bạn!'; toast('Đã đăng ký nhận sách 🎁'); }catch(e){ if(msg) msg.textContent='Lỗi: '+e.message; } }
 
 /* ===== ADMIN ===== (trang riêng — xem admin/index.html) */
