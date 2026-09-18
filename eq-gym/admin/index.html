@@ -37,7 +37,7 @@ let UI={
   view:'overview', payTab:'pending',
   usersSearch:'', usersSort:'created_desc', usersPage:0,
   pendingSearch:'', pendingSort:'date_asc', pendingPage:0,
-  vouchersSearch:'', vouchersSort:'date_desc', vouchersPage:0,
+  vouchersSearch:'', vouchersSort:'date_desc', vouchersPage:0, editVoucherId:null,
   historySearch:'', historySort:'date_desc', historyPage:0, historyStatus:'all'
 };
 let DATA={stats:null,pending:null,vouchers:null,users:null,usersTotal:0,history:null,historyTotal:0};
@@ -184,6 +184,16 @@ async function createVoucher(){
   try{ await sb.from('vouchers').insert({code,discount_amount:discount,max_uses:maxRaw?parseInt(maxRaw,10):null}); loadAll(); }catch(e){ alert('Lỗi: '+e.message); }
 }
 async function toggleVoucher(id,active){ try{ await sb.from('vouchers').update({active:!active}).eq('id',id); loadAll(); }catch(e){ alert('Lỗi: '+e.message); } }
+function editVoucherStart(id){ UI.editVoucherId=id; render(); }
+function editVoucherCancel(){ UI.editVoucherId=null; render(); }
+async function saveVoucher(id){
+  const code=($('ev_code_'+id).value||'').trim().toUpperCase();
+  const discount=parseInt($('ev_discount_'+id).value||'0',10);
+  const maxRaw=($('ev_max_'+id).value||'').trim();
+  if(!code||!discount){ alert('Nhập mã và số tiền giảm'); return; }
+  try{ await sb.from('vouchers').update({code,discount_amount:discount,max_uses:maxRaw?parseInt(maxRaw,10):null}).eq('id',id); UI.editVoucherId=null; loadAll(); }
+  catch(e){ alert('Lỗi: '+e.message); }
+}
 
 /* ===== Super admin: đổi role / xoá Premium / khoá tài khoản ===== */
 async function changeRole(uid,role){ try{ const {error}=await sb.rpc('admin_set_role',{p_user_id:uid,p_role:role}); if(error) throw error; loadUsers(); }catch(e){ alert('Lỗi: '+e.message); loadUsers(); } }
@@ -349,11 +359,24 @@ function viewVouchers(){
   list=paginate(list,UI.vouchersPage,PAGE_SIZE);
   if(!total) h+=`<p style="color:#5C6B7A;font-weight:600;text-align:center;padding:20px 0">Không tìm thấy kết quả.</p>`;
   list.forEach(v=>{
-    h+=card(`<div style="display:flex;align-items:center;gap:10px">
-      <div style="flex:1;min-width:0"><b style="font-family:'Space Grotesk';font-size:14px">${esc(v.code)}</b> ${pill(v.active?'Đang bật':'Đã tắt',v.active?'good':'off')}
-      <div style="font-size:11.5px;color:#5C6B7A;font-weight:600;margin-top:3px">Giảm ${fmt(v.discount_amount)}đ · Đã dùng ${v.used_count}${v.max_uses!=null?'/'+v.max_uses:''}</div></div>
-      <button onclick="toggleVoucher('${v.id}',${v.active})" style="border:1px solid #E3E8EE;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:38px">${v.active?'Tắt':'Bật'}</button>
-    </div>`,'padding:12px 14px');
+    if(UI.editVoucherId===v.id){
+      h+=card(`<div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="ev_code_${v.id}" value="${esc(v.code)}" placeholder="MÃ" style="flex:1;min-width:120px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:13px;text-transform:uppercase">
+          <input id="ev_discount_${v.id}" type="number" value="${v.discount_amount}" placeholder="Giảm (đ)" style="width:100px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:13px">
+          <input id="ev_max_${v.id}" type="number" value="${v.max_uses!=null?v.max_uses:''}" placeholder="Lượt (trống=∞)" style="width:120px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:13px">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button onclick="saveVoucher('${v.id}')" style="flex:1;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:#0F1923;color:#fff;min-height:44px">Lưu</button>
+          <button onclick="editVoucherCancel()" style="flex:1;border:1px solid #E3E8EE;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:44px">Huỷ</button>
+        </div>`,'padding:14px');
+    } else {
+      h+=card(`<div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0"><b style="font-family:'Space Grotesk';font-size:14px">${esc(v.code)}</b> ${pill(v.active?'Đang bật':'Đã tắt',v.active?'good':'off')}
+        <div style="font-size:11.5px;color:#5C6B7A;font-weight:600;margin-top:3px">Giảm ${fmt(v.discount_amount)}đ · Đã dùng ${v.used_count}${v.max_uses!=null?'/'+v.max_uses:''}</div></div>
+        <button onclick="editVoucherStart('${v.id}')" style="border:1px solid #E3E8EE;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:38px">Sửa</button>
+        <button onclick="toggleVoucher('${v.id}',${v.active})" style="border:1px solid #E3E8EE;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:38px">${v.active?'Tắt':'Bật'}</button>
+      </div>`,'padding:12px 14px');
+    }
   });
   h+=pager(UI.vouchersPage,total,PAGE_SIZE,'vouchersPageGo(-1)','vouchersPageGo(1)');
   h+=`</div>`;
