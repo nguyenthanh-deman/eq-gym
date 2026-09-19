@@ -198,6 +198,14 @@ async function saveVoucher(id){
 /* ===== Super admin: đổi role / xoá Premium / khoá tài khoản ===== */
 async function changeRole(uid,role){ try{ const {error}=await sb.rpc('admin_set_role',{p_user_id:uid,p_role:role}); if(error) throw error; loadUsers(); }catch(e){ alert('Lỗi: '+e.message); loadUsers(); } }
 async function revokePremium(uid){ if(!confirm('Xoá Premium của học viên này?')) return; try{ const {error}=await sb.rpc('admin_revoke_premium',{p_user_id:uid}); if(error) throw error; loadUsers(); }catch(e){ alert('Lỗi: '+e.message); } }
+async function grantPremium(uid){
+  const raw=prompt('Cấp/gia hạn Premium — nhập số tháng:','12');
+  if(raw==null) return;
+  const months=parseInt(raw,10);
+  if(!months||months<=0){ alert('Số tháng không hợp lệ'); return; }
+  try{ const {error}=await sb.rpc('admin_grant_premium',{p_user_id:uid,p_months:months}); if(error) throw error; loadUsers(); }
+  catch(e){ alert('Lỗi: '+e.message); }
+}
 async function banUser(uid,currentlyBanned){ if(!confirm(currentlyBanned?'Mở khoá tài khoản này?':'Khoá tài khoản này? Học viên sẽ không đăng nhập/luyện tập được nữa.')) return; try{ const {error}=await sb.rpc('admin_set_banned',{p_user_id:uid,p_banned:!currentlyBanned}); if(error) throw error; loadUsers(); }catch(e){ alert('Lỗi: '+e.message); } }
 
 function nav(v){ UI.view=v; render(); window.scrollTo(0,0); }
@@ -407,6 +415,7 @@ function viewUsers(){
           <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
           <option value="super_admin" ${u.role==='super_admin'?'selected':''}>Super Admin</option>
         </select>
+        <button onclick="grantPremium('${u.id}')" style="border:1px solid #E3E8EE;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:800;cursor:pointer;background:#fff;color:#0A6E5D">+ Premium</button>
         ${prem?`<button onclick="revokePremium('${u.id}')" style="border:1px solid #E3E8EE;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:800;cursor:pointer;background:#fff;color:#C74848">Xoá Premium</button>`:''}
         <button onclick="banUser('${u.id}',${!!u.banned})" style="border:1px solid #E3E8EE;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:800;cursor:pointer;background:#fff;color:${u.banned?'#0A6E5D':'#C74848'}">${u.banned?'Mở khoá':'Khoá'}</button>
       </div>`:''}`,'padding:12px 14px');
