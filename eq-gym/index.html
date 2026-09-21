@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Nunito:wght@400;600;700;800&family=Alex+Brush&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 html,body{margin:0;padding:0;background:#E9EDF2}
@@ -112,7 +112,7 @@ function trimForSync(){
   const hist={}; Object.keys(S.history||{}).forEach(k=>{ hist[k]=(S.history[k]||[]).slice(0,8).map(x=>({ts:x.ts,score:x.score,dims:x.dims,by:x.by})); });
   const ans={}; Object.keys(S.ans||{}).forEach(k=>{ if(S.ans[k]) ans[k]=cap(S.ans[k],500); });
   const scores={}; Object.keys(S.scores||{}).forEach(k=>{ const x=S.scores[k]||{}; scores[k]={score:x.score,dims:x.dims,by:x.by,feedback:cap(x.feedback,220),tip:cap(x.tip,160)}; });
-  let out={done:S.done,graded:S.graded,streak:S.streak,last:S.last,bounty:S.bounty,practices:S.practices,quiz:S.quiz,qans:S.qans,scen:S.scen,scores:scores,ans:ans,history:hist,cert:S.cert||null,freezes:S.freezes,bestStreak:S.bestStreak,broken:S.broken||null,streak7:S.streak7,freezeBuys:(S.freezeBuys||[]).slice(-10)};
+  let out={done:S.done,graded:S.graded,streak:S.streak,last:S.last,bounty:S.bounty,practices:S.practices,quiz:S.quiz,qans:S.qans,scen:S.scen,scores:scores,ans:ans,history:hist,certs:S.certs||{},freezes:S.freezes,bestStreak:S.bestStreak,broken:S.broken||null,streak7:S.streak7,freezeBuys:(S.freezeBuys||[]).slice(-10)};
   try{ if(JSON.stringify(out).length>45000){ out.ans={}; } if(JSON.stringify(out).length>45000){ out.history={}; } }catch(e){}
   return out;
 }
@@ -131,7 +131,7 @@ function applyProgress(p){ try{ p=p||{}; const L=S, m=Object.assign(dflt(),p);
   m.broken=(L.broken&&(!p.broken||L.broken.at>=p.broken.at))?L.broken:(p.broken||null);
   m.freezeBuys=[...new Set([...(p.freezeBuys||[]),...(L.freezeBuys||[])])].slice(-10);
   ['ans','scores','graded','scen','qans'].forEach(k=>{ m[k]=Object.assign({},p[k]||{},L[k]||{}); });
-  m.history=Object.assign({},p.history||{},L.history||{}); m.chat=(L.chat&&L.chat.length)?L.chat:(p.chat||[]); m.quiz=p.quiz||L.quiz; m.cert=p.cert||L.cert||null;
+  m.history=Object.assign({},p.history||{},L.history||{}); m.chat=(L.chat&&L.chat.length)?L.chat:(p.chat||[]); m.quiz=p.quiz||L.quiz; m.certs=Object.assign({},p.certs||{},L.certs||{});
   S=m; try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ _mem=S; }
 }catch(e){} }
 async function doLogin(){
@@ -266,7 +266,7 @@ function viewAdminCode(){
 
 /* ===== Thanh toán / cộng đồng (Premium) ===== */
 const BANK={ bank_code:"SEAB", account_no:"00500000120722", account_name:"DOAN THI HAI LOAN" };
-const COMMUNITY_URL="https://facebook.com/groups/eqgym";
+const COMMUNITY_URL="https://zaloapp.com/qr/g/9cisw0ktwt4zowguavqb?src=qr";
 const PREMIUM_PRICE=499000;
 
 /* ================================================================
@@ -367,9 +367,9 @@ function load(){
   try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s) return Object.assign(dflt(),s); }catch(e){}
   return dflt();
 }
-function dflt(){ return {done:[],ans:{},scores:{},graded:{},streak:0,last:null,bounty:0,scen:{},history:{},chat:[],practices:0,quiz:null,qans:{},cert:null,freezes:1,bestStreak:0,broken:null,streak7:false,freezeBuys:[]}; }
+function dflt(){ return {done:[],ans:{},scores:{},graded:{},streak:0,last:null,bounty:0,scen:{},history:{},chat:[],practices:0,quiz:null,qans:{},certs:{},freezes:1,bestStreak:0,broken:null,streak7:false,freezeBuys:[]}; }
 let S=load();
-let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:'',certOpen:false,certImg:null,zv:null,streakOpen:false};
+let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:'',certOpen:null,certImg:null,zv:null,streakOpen:false};
 let snd; try{ snd=Object.assign({bgm:true,sfx:true,track:0,vol:0.5}, JSON.parse(localStorage.getItem('eqgym_sound_v1'))||{}); }catch(e){ snd={bgm:true,sfx:true,track:0,vol:0.5}; }
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ _mem=S; } scheduleSync(); syncPoints(); }
 function saveSnd(){ try{ localStorage.setItem('eqgym_sound_v1',JSON.stringify(snd)); }catch(e){} }
@@ -378,7 +378,7 @@ function saveSnd(){ try{ localStorage.setItem('eqgym_sound_v1',JSON.stringify(sn
 let _syncT=null;
 function scheduleSync(){ if(!BACKEND||!AUTH) return; clearTimeout(_syncT); _syncT=setTimeout(syncPush,1500); }
 async function syncPush(){ if(!BACKEND||!AUTH) return;
-  try{ await sb.from('progress').upsert({user_id:AUTH.id,done:S.done,bounty:S.bounty,streak:S.streak,last_date:S.last,graded:S.graded,scen:S.scen,updated_at:new Date().toISOString()}); }catch(e){ console.warn('sync',e); } }
+  try{ await sb.from('progress').upsert({user_id:AUTH.id,done:S.done,bounty:S.bounty,streak:S.streak,last_date:S.last,graded:S.graded,scen:S.scen,certs:S.certs||{},updated_at:new Date().toISOString()}); }catch(e){ console.warn('sync',e); } }
 async function pushPractice(n,rec){ if(!BACKEND||!AUTH) return;
   try{ await sb.from('practices').insert({user_id:AUTH.id,lesson_n:n,scenario:rec.scenario,answer:rec.answer,dims:rec.dims,score:rec.score,feedback:rec.feedback,tip:rec.tip,by:rec.by}); }catch(e){ console.warn('pp',e); } }
 async function pushAssessment(scores,answers){ if(!BACKEND||!AUTH) return;
@@ -386,7 +386,7 @@ async function pushAssessment(scores,answers){ if(!BACKEND||!AUTH) return;
 async function pullRemote(){ if(!BACKEND||!AUTH) return;
   try{
     const {data:pg}=await sb.from('progress').select('*').eq('user_id',AUTH.id).maybeSingle();
-    if(pg){ S.done=[...new Set([...(S.done||[]),...(pg.done||[])])]; S.bounty=Math.max(S.bounty||0,pg.bounty||0); S.streak=Math.max(S.streak||0,pg.streak||0); S.last=pg.last_date||S.last; S.graded=Object.assign({},S.graded,pg.graded||{}); S.scen=Object.assign({},S.scen,pg.scen||{}); }
+    if(pg){ S.done=[...new Set([...(S.done||[]),...(pg.done||[])])]; S.bounty=Math.max(S.bounty||0,pg.bounty||0); S.streak=Math.max(S.streak||0,pg.streak||0); S.last=pg.last_date||S.last; S.graded=Object.assign({},S.graded,pg.graded||{}); S.scen=Object.assign({},S.scen,pg.scen||{}); S.certs=Object.assign({},S.certs||{},pg.certs||{}); }
     const {data:pr}=await sb.from('practices').select('*').eq('user_id',AUTH.id).order('created_at',{ascending:false}).limit(500);
     if(pr){ pr.forEach(r=>{ const ts=new Date(r.created_at).getTime(); S.history[r.lesson_n]=S.history[r.lesson_n]||[]; if(!S.history[r.lesson_n].some(x=>Math.abs((x.ts||0)-ts)<2000 && x.score===r.score)) S.history[r.lesson_n].push({ts,scenario:r.scenario,answer:r.answer,dims:r.dims,score:r.score,feedback:r.feedback,tip:r.tip,by:r.by}); }); Object.keys(S.history).forEach(k=>S.history[k].sort((a,b)=>(b.ts||0)-(a.ts||0))); }
     save();
@@ -520,17 +520,19 @@ function complete(n){
   if(sres.day7){ S.bounty+=STREAK7_BONUS; bonus+=STREAK7_BONUS; if(CODE_MODE&&MEMBER&&MEMBER.role==='member'){ try{ api({action:'event',code:MEMBER.code,event:'streak7'}); }catch(e){} } }
   save(); confettiRain(); sfx('chest');
   if(sres.freeze) toast('🧊 Đã dùng 1 Ngày nghỉ phép để giữ chuỗi '+S.streak+' ngày!');
+  const newCertMs=checkCertMilestones();
   const d=S.done.length, r=rankOf(d), pr=rankOf(d-1);
   const mdone=m=>LESSONS.filter(l=>l.module===m).every(l=>isDone(l.n));
   let title='BUỔI TẬP HOÀN THÀNH!', msg='Buổi '+n+' · '+LESSONS[n].title, rc='#0FB89B';
-  if(d>=30){ title='BẬC THẦY EQ!'; msg='Bạn đã hoàn thành trọn vẹn 30 buổi của hành trình EQ GYM. Thành quả lớn nhất là con người mới của bạn — và giấy chứng nhận hoàn thành đã sẵn sàng!'; rc='#E0930A'; if(!S.cert){ S.cert=makeCert(); save(); certEvent(); } }
+  if(newCertMs){ const ct=CERT_MILESTONES.find(m=>m.days===newCertMs); title='🎓 CHỨNG NHẬN MỚI!'; msg='Bạn vừa đạt mốc '+newCertMs+' ngày luyện tập liên tục — danh hiệu "'+(ct?ct.title:'')+'" và giấy chứng nhận đã sẵn sàng!'; rc='#E0930A'; }
+  else if(d>=30){ title='BẬC THẦY EQ!'; msg='Bạn đã hoàn thành trọn vẹn 30 buổi của hành trình EQ GYM. Thành quả lớn nhất là con người mới của bạn!'; rc='#E0930A'; }
   else if(sres.day7){ title='🔥 CHUỖI 7 NGÀY!'; msg='Bạn đã luyện tập liên tục 7 ngày — thói quen đang hình thành! Huy hiệu "Tuần Đầu Tiên" đã mở khóa cùng phần thưởng đặc biệt.'; rc='#E85B5B'; }
   else if(r[1]!==pr[1]){ title='THĂNG HẠNG: '+r[1]+'!'; rc='#E0930A'; }
   else if((n===12&&mdone(1))||(n===20&&mdone(2))||(n===29&&mdone(3))){ title='HUY CHƯƠNG MỚI!'; rc='#4A9EFF'; }
-  UI.treasure={title,msg,rc,earn:'+'+fmt(bonus)+' EP',btn:n<29?'Sang buổi tập tiếp theo ›':(d>=30?'🎓 Nhận giấy chứng nhận':'Về lộ trình'),next:n<29?n+1:null,cert:d>=30};
+  UI.treasure={title,msg,rc,earn:'+'+fmt(bonus)+' EP',btn:newCertMs?'🎓 Nhận giấy chứng nhận':(n<29?'Sang buổi tập tiếp theo ›':'Về lộ trình'),next:n<29?n+1:null,certMs:newCertMs||null};
   render();
 }
-function closeTreasure(){ const t=UI.treasure; UI.treasure=null; if(t&&t.cert&&S.cert){ goHome(); openCert(); return; } if(t&&t.next!=null&&AUTO_NEXT) openLesson(t.next); else goHome(); }
+function closeTreasure(){ const t=UI.treasure; UI.treasure=null; if(t&&t.certMs){ goHome(); openCert(t.certMs); return; } if(t&&t.next!=null&&AUTO_NEXT) openLesson(t.next); else goHome(); }
 function confettiRain(){ const c=document.createElement('div'); c.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:95'; document.body.appendChild(c); const cs=['#0FB89B','#E85B5B','#E0930A','#4A9EFF']; for(let i=0;i<44;i++){ const d=document.createElement('div'); const sz=6+Math.random()*8; d.style.cssText='position:absolute;left:'+(Math.random()*100)+'%;top:-20px;width:'+sz+'px;height:'+sz+'px;border-radius:'+(Math.random()>.5?'50%':'2px')+';background:'+cs[i%4]; c.appendChild(d); if(d.animate) d.animate([{transform:'translateY(0) rotate(0)',opacity:1},{transform:'translateY('+(window.innerHeight+60)+'px) rotate('+(360*Math.random())+'deg)',opacity:.85}],{duration:1400+Math.random()*1400,easing:'cubic-bezier(.2,.6,.4,1)'}); } setTimeout(()=>c.remove(),3000); }
 function resetAll(){ if(confirm('Đặt lại toàn bộ lộ trình, điểm EP và nhật ký? Không thể hoàn tác.')){ const q=S.quiz,qa=S.qans; S=dflt(); S.quiz=q; S.qans=qa; save(); UI.view='home'; render(); toast('Lộ trình mới bắt đầu — tập đều mỗi ngày nhé!'); } }
 
@@ -878,7 +880,7 @@ function soundIcon(){ return snd?(snd.bgm?'♪':(snd.sfx?'♫':'⊘')):'♪'; }
 
 function viewHome(){
   const d=S.done.length, r=rankOf(d), nr=nextRank(d), prev=r[0], hi=nr?nr[0]:30;
-  if(d>=30&&!S.cert){ S.cert=makeCert(); save(); certEvent(); }
+  checkCertMilestones();
   const nextN=[...Array(30).keys()].find(n=>!isDone(n));
   const sc=Object.values(S.scores).map(x=>x.score);
   const mdone=m=>LESSONS.filter(l=>l.module===m).every(l=>isDone(l.n));
@@ -916,7 +918,7 @@ function viewHome(){
     <div style="flex:1;background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:12px 6px;text-align:center"><b style="display:block;font-family:'Space Grotesk';font-size:17px;color:#0A6E5D">${sc.length?String(Math.round(sc.reduce((a,b)=>a+b,0)/sc.length)):'—'}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">Điểm TB AI</span></div>
   </div>
   <div style="display:flex;gap:9px;margin:11px 16px 0">
-    ${badges.map(b=>`<div onclick="${(b[0]==='Bậc Thầy EQ'&&S.cert)?'openCert()':''}" style="flex:1;background:#fff;border-radius:15px;padding:11px 4px;text-align:center;opacity:${b[2]?1:.6};border:1px solid ${b[2]?b[1]:'#E3E8EE'};cursor:${(b[0]==='Bậc Thầy EQ'&&S.cert)?'pointer':'default'}"><svg width="26" height="26" viewBox="0 0 100 100" style="display:block;margin:0 auto"><circle cx="50" cy="50" r="34" fill="none" stroke="${b[2]?b[1]:'#C7D0D9'}" stroke-width="13"/><circle cx="50" cy="50" r="9" fill="${b[2]?'#E85B5B':'#C7D0D9'}"/></svg><span style="font-size:9px;color:${b[2]?'#0F1923':'#8A97A5'};display:block;margin-top:5px;line-height:1.3;font-weight:800">${b[0]}</span></div>`).join('')}
+    ${badges.map(b=>`<div onclick="${(b[0]==='Bậc Thầy EQ'&&latestCertMilestone())?'openCert()':''}" style="flex:1;background:#fff;border-radius:15px;padding:11px 4px;text-align:center;opacity:${b[2]?1:.6};border:1px solid ${b[2]?b[1]:'#E3E8EE'};cursor:${(b[0]==='Bậc Thầy EQ'&&latestCertMilestone())?'pointer':'default'}"><svg width="26" height="26" viewBox="0 0 100 100" style="display:block;margin:0 auto"><circle cx="50" cy="50" r="34" fill="none" stroke="${b[2]?b[1]:'#C7D0D9'}" stroke-width="13"/><circle cx="50" cy="50" r="9" fill="${b[2]?'#E85B5B':'#C7D0D9'}"/></svg><span style="font-size:9px;color:${b[2]?'#0F1923':'#8A97A5'};display:block;margin-top:5px;line-height:1.3;font-weight:800">${b[0]}</span></div>`).join('')}
   </div>`;
   if(S.broken && repairLeftMs()>0){ const hrs=Math.max(1,Math.ceil(repairLeftMs()/3600000));
     h+=`<div onclick="openStreak()" style="margin:11px 16px 0;background:linear-gradient(135deg,#FDEEEE,#FBD8D8);border:1px solid #F5CFCF;border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:12px;cursor:pointer">
@@ -1174,7 +1176,7 @@ function sheetSettings(){
         <div style="font-size:12.5px;color:#BFEFE4;font-weight:700;margin-top:2px">${esc(m.email||'')} · <span style="color:#fff">${fmt(S.bounty)} EP</span></div>
       </div>
       <p style="color:#5C6B7A;font-size:12px;line-height:1.65;margin:12px 2px 0;font-weight:600">✨ Coach AI đã bật sẵn. Tiến độ học tự lưu theo email của bạn — vào lại bằng email này là học tiếp được. Đua điểm ở tab 🏆 Thi đua nhé!</p>
-      ${S.cert?certBtnHtml():''}
+      ${latestCertMilestone()?certBtnHtml():''}
       <button onclick="guestLogout()" style="width:100%;margin-top:14px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:46px">Đổi email / Thoát</button>`);
   }
   if(CODE_MODE){
@@ -1187,7 +1189,7 @@ function sheetSettings(){
       </div>
       <p style="color:#5C6B7A;font-size:12px;line-height:1.6;margin:12px 2px 0;font-weight:600">✨ Coach AI đã bật sẵn (dùng chung của EQ GYM) — bạn chỉ việc luyện tập, không cần cấu hình gì thêm.</p>`;
     if(m.role==='admin') h+=`<button onclick="openAdminCode()" style="width:100%;margin-top:14px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0F1923,#0A6E5D);color:#fff;min-height:48px">🛡️ Cấp mã học viên</button>`;
-    if(S.cert) h+=certBtnHtml();
+    if(latestCertMilestone()) h+=certBtnHtml();
     h+=`<button onclick="logoutMember()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:46px">Đăng xuất</button>`;
     return sheet(h);
   }
@@ -1226,80 +1228,85 @@ function modalTreasure(){
   return `<div style="position:fixed;inset:0;background:rgba(15,25,35,.55);backdrop-filter:blur(6px);z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;animation:fade .3s"><div style="background:#fff;border-radius:24px;padding:30px 24px;text-align:center;max-width:340px;width:100%;animation:pop .45s ease">${ring(80,t.rc)}<h2 style="color:#0F1923;margin:12px 0 4px;font-family:'Space Grotesk';font-size:20px;font-weight:700">${esc(t.title)}</h2><p style="color:#5C6B7A;margin:3px 0;font-size:14px;line-height:1.6;font-weight:600">${esc(t.msg)}</p><div style="font-family:'Space Grotesk';font-size:18px;font-weight:700;color:#0A6E5D;margin-top:10px">${esc(t.earn)}</div><button onclick="closeTreasure()" style="width:100%;margin-top:20px;border:none;border-radius:15px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:52px">${esc(t.btn)}</button></div></div>`;
 }
 
-/* ===== 🎓 GIẤY CHỨNG NHẬN HOÀN THÀNH (tự tạo khi xong 30/30 buổi) ===== */
-function certId(){ const s=String((MEMBER&&MEMBER.code)||'LOCAL').replace(/[^A-Z0-9]/gi,'').toUpperCase(); const t=Date.now().toString(36).toUpperCase(); return 'EQG-'+new Date().getFullYear()+'-'+(s.slice(-4)||'XXXX')+'-'+t.slice(-5); }
-function makeCert(){ const sc=Object.values(S.scores||{}).map(x=>x&&x.score).filter(x=>typeof x==='number'); const avg=sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):null; return {id:certId(),name:((MEMBER&&MEMBER.name)||'').trim(),ts:Date.now(),ep:S.bounty||0,avg,streak:Math.max(S.bestStreak||0,S.streak||0),practices:S.practices||0}; }
-function certEvent(){ if(!(CODE_MODE&&MEMBER&&S.cert)) return; if(MEMBER.role!=='member'&&MEMBER.role!=='guest') return; try{ api({action:'event',code:MEMBER.code,event:'certificate',detail:S.cert.id+' · '+(S.cert.name||'(chưa nhập tên)')}); }catch(e){} }
-function openCert(){ if(!S.cert) return; sfx('success'); UI.settingsOpen=false; UI.certOpen=true; UI.certImg=null; render(); renderCert(); }
-function closeCert(){ UI.certOpen=false; render(); }
-function certFile(){ return 'EQ-GYM-Chung-nhan-'+(S.cert?S.cert.id:'')+'.png'; }
+/* ===== 🎓 GIẤY CHỨNG NHẬN — 5 mốc chuỗi ngày luyện tập liên tục ===== */
+const CERT_MILESTONES=[
+  {days:30, title:'EQ EXPLORER'},
+  {days:60, title:'EQ WARRIOR'},
+  {days:90, title:'EQ CHAMPION'},
+  {days:180, title:'EQ MASTER'},
+  {days:365, title:'EQ AMBASSADOR'}
+];
+function certId(days){ const s=String((MEMBER&&MEMBER.code)||'LOCAL').replace(/[^A-Z0-9]/gi,'').toUpperCase(); const t=Date.now().toString(36).toUpperCase(); return 'EQG-'+days+'-'+new Date().getFullYear()+'-'+(s.slice(-4)||'XXXX')+'-'+t.slice(-5); }
+function makeCertFor(days,title){ return {id:certId(days),name:((MEMBER&&MEMBER.name)||'').trim(),ts:Date.now(),milestone:days,title,desc:'Completed '+days+' Days of EQ Practice'}; }
+function latestCertMilestone(){ const ks=Object.keys(S.certs||{}).map(Number); return ks.length?Math.max(...ks):null; }
+function checkCertMilestones(){
+  S.certs=S.certs||{}; let newest=null;
+  CERT_MILESTONES.forEach(m=>{ if((S.streak||0)>=m.days && !S.certs[m.days]){ S.certs[m.days]=makeCertFor(m.days,m.title); newest=m.days; } });
+  if(newest){ save(); certEvent(newest); }
+  return newest;
+}
+function certEvent(days){ if(!(CODE_MODE&&MEMBER)) return; const c=S.certs&&S.certs[days]; if(!c) return; if(MEMBER.role!=='member'&&MEMBER.role!=='guest') return; try{ api({action:'event',code:MEMBER.code,event:'certificate',detail:c.id+' · '+days+' ngày · '+(c.name||'(chưa nhập tên)')}); }catch(e){} }
+function openCert(days){ const m=days||latestCertMilestone(); if(!m||!(S.certs&&S.certs[m])) return; sfx('success'); UI.settingsOpen=false; UI.certOpen=m; UI.certImg=null; render(); renderCert(m); }
+function closeCert(){ UI.certOpen=null; render(); }
+function certFile(days){ const c=S.certs&&S.certs[days]; return 'EQ-GYM-Chung-nhan-'+(c?c.id:'')+'.png'; }
 function certDate(c){ const d=new Date(c.ts||Date.now()); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
-function saveCertName(){ const v=(val('certname')||'').trim(); if(!v){ toast('Nhập họ tên để in trên chứng nhận'); return; } S.cert.name=v; save(); UI.certImg=null; render(); renderCert(); toast('Đã cập nhật tên trên chứng nhận'); }
-/* 📄 Khung nền chứng nhận = file thiết kế gốc (assets/cert-frame.svg, viewBox 993x651).
-   Toạ độ các trường động dưới đây đo trực tiếp từ DOM thật của file (getBoundingClientRect), không áng chừng. */
-const CERT_FRAME_SRC='assets/cert-frame.svg', CERT_VB_W=993, CERT_VB_H=651, CERT_SCALE=2;
+function saveCertName(){ const v=(val('certname')||'').trim(); if(!v){ toast('Nhập họ tên để in trên chứng nhận'); return; } Object.values(S.certs||{}).forEach(c=>c.name=v); save(); UI.certImg=null; render(); renderCert(UI.certOpen); toast('Đã cập nhật tên trên chứng nhận'); }
+/* 📄 Khung nền chứng nhận = file thiết kế gốc (assets/cert-frame.svg, mẫu Canva 21-09, 1536x1024px).
+   Toạ độ các trường động dưới đây đo trực tiếp từ ảnh mẫu gốc (lưới pixel), không áng chừng. */
+const CERT_FRAME_SRC='assets/cert-frame.svg', CERT_W=1536, CERT_H=1024;
 let _certFrameImg=null;
 function loadCertFrame(){ if(_certFrameImg) return Promise.resolve(_certFrameImg);
   return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>{ _certFrameImg=img; res(img); }; img.onerror=rej; img.src=CERT_FRAME_SRC; }); }
-function certRR(x,X,Y,w,h,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
-function certSpaced(x,text,X,Y,sp,align){ const chars=[...text]; let w=0; chars.forEach(ch=>w+=x.measureText(ch).width); w+=sp*(chars.length-1); let cx=align==='center'?X-w/2:(align==='right'?X-w:X); const ta=x.textAlign; x.textAlign='left'; chars.forEach(ch=>{ x.fillText(ch,cx,Y); cx+=x.measureText(ch).width+sp; }); x.textAlign=ta; }
-function certLogo(x,px,py,size){ const k=size/100; x.save(); x.translate(px,py); x.scale(k,k);
-  x.fillStyle='#0F1923'; [[10,18,9,64],[10,18,32,9],[10,45,26,9],[10,73,32,9]].forEach(r=>{ certRR(x,r[0],r[1],r[2],r[3],4.5); x.fill(); });
-  x.strokeStyle='#0FB89B'; x.lineWidth=9; x.beginPath(); x.arc(70,50,22,0,Math.PI*2); x.stroke();
-  x.fillStyle='#E85B5B'; x.beginPath(); x.arc(70,50,5,0,Math.PI*2); x.fill();
-  x.save(); x.translate(78,64); x.rotate(Math.PI/4); x.fillStyle='#0FB89B'; certRR(x,0,0,19,7,3.5); x.fill(); x.restore();
-  x.restore(); }
-async function renderCert(){
-  const c=S.cert; if(!c) return;
+async function renderCert(days){
+  const m=days||UI.certOpen; const c=S.certs&&S.certs[m]; if(!c) return;
   let frame; try{ frame=await loadCertFrame(); }catch(e){ UI.certImg=null; toast('Không tải được khung chứng nhận'); return; }
-  try{ await document.fonts.load('700 40px "Space Grotesk"'); }catch(e){}
-  const SC=CERT_SCALE, W=CERT_VB_W*SC, H=CERT_VB_H*SC;
+  try{ await document.fonts.load('700 46px "Space Grotesk"'); await document.fonts.load('400 72px "Alex Brush"'); }catch(e){}
+  const W=CERT_W,H=CERT_H;
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
-  const SG='"Space Grotesk",sans-serif';
   x.fillStyle='#fff'; x.fillRect(0,0,W,H);
   x.drawImage(frame,0,0,W,H);
-  const teal='#002c27';
-  // Logo EQ GYM — khoảng trống trên đầu, giữa hoa văn góc trái và tiêu đề (icon + chữ cùng hàng, phụ đề bên dưới; x1.5 + hạ thấp xuống)
-  certLogo(x,300,55,93);
-  x.textBaseline='alphabetic'; x.textAlign='left'; x.font='800 54px '+SG;
-  x.fillStyle='#0F1923'; x.fillText('EQ', 400, 121);
-  x.fillStyle='#00807b'; x.fillText('GYM', 400+x.measureText('EQ ').width, 121);
-  x.fillStyle='#5C6B7A'; x.font='800 18px "Nunito",sans-serif';
-  certSpaced(x,'PHÒNG TẬP CẢM XÚC · HÀNH TRÌNH 30 NGÀY',300,150,2,'left');
-  x.textBaseline='middle'; x.textAlign='center';
-  // Họ tên — giữa khoảng trắng dưới "Trân trọng chứng nhận"
-  const name=(c.name||'HỌC VIÊN EQ GYM').toUpperCase(); let fs=64; x.font='700 '+fs+'px '+SG;
-  while(x.measureText(name).width>W-220 && fs>32){ fs-=2; x.font='700 '+fs+'px '+SG; }
-  x.fillStyle=teal; x.fillText(name, W/2, 269*SC);
-  // 4 số liệu — sát ngay trên nhãn có sẵn trong khung (x1.5, nhích lên một chút để không đụng nhãn)
-  const stats=[['30/30',217.55],[fmt(c.ep),403.25],[c.avg!=null?String(c.avg):'—',589.75],[String(c.practices||0),781.45]];
-  stats.forEach(([val,cx])=>{ let f=57; x.font='700 '+f+'px '+SG; while(x.measureText(val).width>315 && f>30){ f-=2; x.font='700 '+f+'px '+SG; } x.fillStyle=teal; x.fillText(val, cx*SC, 845); });
-  // Ngày hoàn thành + chuỗi ngày dài nhất — sát ngay dưới nhãn "NGÀY HOÀN THÀNH" (căn trái, đúng lề nhãn; x1.5)
-  x.textAlign='left'; x.font='700 39px '+SG; x.fillStyle=teal;
-  x.fillText(certDate(c), 80.9*SC, 1090);
-  x.font='600 23px "Nunito",sans-serif'; x.fillStyle='#5C6B7A';
-  x.fillText('Chuỗi ngày tập dài nhất: '+(c.streak||0)+' ngày', 80.9*SC, 1132);
-  // Mã chứng nhận — góc trên phải, khoảng trống trước hoa văn góc (x1.5 + hạ thấp xuống)
-  x.textAlign='right'; x.font='700 33px "Nunito",sans-serif'; x.fillStyle='#5C6B7A';
-  x.fillText('Mã chứng nhận · '+c.id, 818*SC, 100);
+  const WHITE='#FBFBFB', RED='#7A0509';
+  // Xoá 4 vùng chữ mẫu ("Your Name" / "EQ EXPLORER" / mô tả / ngày cấp) trước khi vẽ đè chữ thật
+  x.fillStyle=WHITE;
+  x.fillRect(500,465,700,117);
+  x.fillRect(560,632,420,50);
+  x.fillRect(530,680,470,42);
+  x.fillRect(1000,905,260,47);
+  x.textBaseline='alphabetic'; x.textAlign='center';
+  // Họ tên (chữ ký thảo)
+  const name=(c.name||'Học viên EQ GYM'); let fs=72; x.font=fs+'px "Alex Brush",cursive';
+  while(x.measureText(name).width>680 && fs>32){ fs-=2; x.font=fs+'px "Alex Brush",cursive'; }
+  x.fillStyle=RED; x.fillText(name, 768, 555);
+  // Danh hiệu (vd EQ EXPLORER)
+  x.font='700 46px "Space Grotesk",sans-serif'; x.fillStyle=RED;
+  x.fillText(c.title, 768, 668);
+  // Mô tả mốc (vd Completed 30 Days of EQ Practice)
+  x.font='500 27px "Nunito",sans-serif'; x.fillStyle='#222';
+  x.fillText(c.desc, 768, 708);
+  // Ngày cấp
+  x.font='600 24px "Nunito",sans-serif'; x.fillStyle='#333';
+  x.fillText(certDate(c), 1130, 936);
   try{ UI.certImg=cv.toDataURL('image/png'); }catch(e){ UI.certImg=null; toast('Không tạo được ảnh chứng nhận'); }
-  if(UI.certOpen) render();
+  if(UI.certOpen===m) render();
 }
 async function shareCert(){ if(!UI.certImg){ toast('Đang tạo ảnh, đợi chút nhé...'); return; } sfx('tap');
-  try{ const blob=await (await fetch(UI.certImg)).blob(); const file=new File([blob],certFile(),{type:'image/png'});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:'Chứng nhận EQ GYM',text:'Mình vừa hoàn thành 30 ngày EQ GYM — Phòng tập cảm xúc! 🎓'}); return; }
+  const m=UI.certOpen, c=S.certs&&S.certs[m];
+  try{ const blob=await (await fetch(UI.certImg)).blob(); const file=new File([blob],certFile(m),{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:'Chứng nhận EQ GYM',text:'Mình vừa đạt danh hiệu '+(c?c.title:'')+' tại EQ GYM! 🎓'}); return; }
   }catch(e){ if(e&&e.name==='AbortError') return; }
   toast('Thiết bị chưa hỗ trợ chia sẻ trực tiếp — hãy tải ảnh về rồi chia sẻ nhé'); }
-function certCardHome(){ const c=S.cert; if(!c) return '';
-  return `<div onclick="openCert()" style="margin:12px 16px 0;background:linear-gradient(135deg,#FFF3D6,#FFE1A8);border:1px solid #F2D9A8;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:13px;cursor:pointer;box-shadow:0 10px 26px rgba(224,147,10,.18)"><div style="width:46px;height:46px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 46px">🎓</div><div style="flex:1;min-width:0"><div style="font-size:10.5px;font-weight:800;letter-spacing:1.5px;color:#B27607">GIẤY CHỨNG NHẬN HOÀN THÀNH</div><div style="font-size:14px;font-weight:800;color:#0F1923;line-height:1.3;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name||'Nhập tên để in chứng nhận')}</div><div style="font-size:11px;color:#8A6A1E;font-weight:700;margin-top:2px">${esc(c.id)} · ${esc(certDate(c))}</div></div><span style="font-size:20px;color:#B27607;font-weight:800">›</span></div>`; }
-function certBtnHtml(){ return `<button onclick="openCert()" style="width:100%;margin-top:12px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#E0930A,#C47A00);color:#fff;min-height:48px">🎓 Xem giấy chứng nhận hoàn thành</button>`; }
+function certCardHome(){ const m=latestCertMilestone(); if(!m) return ''; const c=S.certs[m];
+  return `<div onclick="openCert(${m})" style="margin:12px 16px 0;background:linear-gradient(135deg,#FFF3D6,#FFE1A8);border:1px solid #F2D9A8;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:13px;cursor:pointer;box-shadow:0 10px 26px rgba(224,147,10,.18)"><div style="width:46px;height:46px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 46px">🎓</div><div style="flex:1;min-width:0"><div style="font-size:10.5px;font-weight:800;letter-spacing:1.5px;color:#B27607">GIẤY CHỨNG NHẬN · ${esc(c.title)}</div><div style="font-size:14px;font-weight:800;color:#0F1923;line-height:1.3;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name||'Nhập tên để in chứng nhận')}</div><div style="font-size:11px;color:#8A6A1E;font-weight:700;margin-top:2px">${m} ngày · ${esc(certDate(c))}</div></div><span style="font-size:20px;color:#B27607;font-weight:800">›</span></div>`; }
+function certBtnHtml(){ const n=Object.keys(S.certs||{}).length; return `<button onclick="openCert()" style="width:100%;margin-top:12px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#E0930A,#C47A00);color:#fff;min-height:48px">🎓 Xem giấy chứng nhận (${n})</button>`; }
 function modalCert(){
-  const c=S.cert||{};
+  const m=UI.certOpen, c=(S.certs&&S.certs[m])||{};
+  const earned=Object.keys(S.certs||{}).map(Number).sort((a,b)=>a-b);
   return `<div onclick="if(event.target===this)closeCert()" style="position:fixed;inset:0;background:rgba(15,25,35,.6);backdrop-filter:blur(8px);z-index:85;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;padding:20px 18px calc(env(safe-area-inset-bottom) + 22px);animation:up .28s ease">
-    <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><h3 style="margin:0;font-family:'Space Grotesk';font-size:18px;font-weight:700">🎓 Giấy chứng nhận hoàn thành</h3><div style="font-size:11.5px;color:#5C6B7A;font-weight:700;margin-top:2px">Mã ${esc(c.id||'')} · ${esc(certDate(c))}</div></div><button onclick="closeCert()" style="width:40px;height:40px;border-radius:12px;border:1px solid #E3E8EE;background:#fff;font-size:16px;cursor:pointer;flex:0 0 40px">✕</button></div>
-    <div style="margin-top:12px;border-radius:14px;overflow:hidden;border:1px solid #E3E8EE;background:#EEF2F6;aspect-ratio:1600/1131;display:flex;align-items:center;justify-content:center">${UI.certImg?`<img id="certimg" src="${UI.certImg}" alt="Giấy chứng nhận EQ GYM" style="width:100%;display:block">`:`<div style="color:#5C6B7A;font-weight:700;font-size:13px"><span class="sp"></span> Đang tạo chứng nhận...</div>`}</div>
+    <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><h3 style="margin:0;font-family:'Space Grotesk';font-size:18px;font-weight:700">🎓 ${esc(c.title||'Giấy chứng nhận')}</h3><div style="font-size:11.5px;color:#5C6B7A;font-weight:700;margin-top:2px">${m||''} ngày · ${esc(certDate(c))}</div></div><button onclick="closeCert()" style="width:40px;height:40px;border-radius:12px;border:1px solid #E3E8EE;background:#fff;font-size:16px;cursor:pointer;flex:0 0 40px">✕</button></div>
+    ${earned.length>1?`<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">${earned.map(em=>`<button onclick="openCert(${em})" style="border:1px solid ${em===m?'#E0930A':'#E3E8EE'};background:${em===m?'#FFF3D6':'#fff'};color:${em===m?'#B27607':'#5C6B7A'};border-radius:999px;padding:7px 13px;font-size:11.5px;font-weight:800;cursor:pointer">${em} ngày</button>`).join('')}</div>`:''}
+    <div style="margin-top:12px;border-radius:14px;overflow:hidden;border:1px solid #E3E8EE;background:#EEF2F6;aspect-ratio:1536/1024;display:flex;align-items:center;justify-content:center">${UI.certImg?`<img id="certimg" src="${UI.certImg}" alt="Giấy chứng nhận EQ GYM" style="width:100%;display:block">`:`<div style="color:#5C6B7A;font-weight:700;font-size:13px"><span class="sp"></span> Đang tạo chứng nhận...</div>`}</div>
     <div style="margin-top:12px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:14px;padding:12px 13px"><div style="font-size:11px;color:#5C6B7A;font-weight:800;margin-bottom:6px;letter-spacing:.5px">HỌ TÊN IN TRÊN CHỨNG NHẬN</div><div style="display:flex;gap:8px"><input id="certname" value="${esc(c.name||'')}" placeholder="VD: Nguyễn Văn A" onkeydown="if(event.key==='Enter')saveCertName()" style="flex:1;min-width:0;background:#fff;border:1px solid #E3E8EE;border-radius:11px;padding:11px 12px;font-size:14px;font-weight:700"><button onclick="saveCertName()" style="flex:0 0 auto;border:none;border-radius:11px;padding:0 14px;font-size:12.5px;font-weight:800;cursor:pointer;background:#0F1923;color:#fff;min-height:44px">Cập nhật</button></div></div>
-    <div style="display:flex;gap:8px;margin-top:12px"><a id="certdl" href="${UI.certImg||'#'}" download="${certFile()}" onclick="sfx('tap')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:14px;padding:14px;font-size:14px;font-weight:800;background:linear-gradient(135deg,#E0930A,#C47A00);color:#fff;min-height:50px;opacity:${UI.certImg?1:.5}">⬇ Tải ảnh PNG</a><button onclick="shareCert()" style="flex:1;border:1px solid #E3E8EE;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:50px">📤 Chia sẻ</button></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><a id="certdl" href="${UI.certImg||'#'}" download="${certFile(m)}" onclick="sfx('tap')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:14px;padding:14px;font-size:14px;font-weight:800;background:linear-gradient(135deg,#E0930A,#C47A00);color:#fff;min-height:50px;opacity:${UI.certImg?1:.5}">⬇ Tải ảnh PNG</a><button onclick="shareCert()" style="flex:1;border:1px solid #E3E8EE;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:50px">📤 Chia sẻ</button></div>
     <p style="font-size:11px;color:#8A97A5;font-weight:600;margin:10px 0 0;line-height:1.55;text-align:center">📱 Trên iPhone, nếu nút tải mở ảnh ra tab mới: nhấn giữ ảnh → "Lưu vào Ảnh". Chứng nhận lưu theo tài khoản — xem lại bất cứ lúc nào ở mục Tài khoản.</p>
   </div></div>`;
 }
