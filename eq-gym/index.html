@@ -1288,13 +1288,15 @@ async function renderCert(days){
   x.font='600 24px "Nunito",sans-serif'; x.fillStyle='#333';
   x.fillText(certDate(c), 1130, 936);
   // Khung nền gốc (file khách gửi) in sẵn sai chính tả "DOÀN THÌ HẢI LOAN" — xoá và vẽ đè đúng tên chuyên gia.
-  // Chữ mới phải nằm gọn bên trái x=670 để không đè lên "A BRIGHTER TOMORROW" ở cột giữa.
-  try{ await document.fonts.load('700 28px "Space Grotesk"'); }catch(e){}
+  // Chỉ xoá đúng dòng tên (893-906), KHÔNG đụng vào dòng "Founder | EQ GYM" ngay bên dưới (914-933)
+  // hay dải gạch chữ ký phía trên (877-878) — 3 điều này đo trực tiếp từ khung nền gốc.
+  try{ await document.fonts.load('700 16px "Space Grotesk"'); }catch(e){}
   x.fillStyle=WHITE;
-  x.fillRect(325,884,305,55);
-  x.textAlign='left'; x.font='700 28px "Space Grotesk",sans-serif'; x.fillStyle='#161616';
+  x.fillRect(320,885,200,26);
+  x.textAlign='center'; x.font='700 16px "Space Grotesk",sans-serif'; x.fillStyle='#161616';
   try{ x.letterSpacing='1px'; }catch(e){}
-  x.fillText('ĐOÀN THỊ HẢI LOAN', 338, 917);
+  x.fillText('ĐOÀN THỊ HẢI LOAN', 416, 905);
+  x.textAlign='left';
   try{ x.letterSpacing='0px'; }catch(e){}
   try{ UI.certImg=cv.toDataURL('image/png'); }catch(e){ UI.certImg=null; toast('Không tạo được ảnh chứng nhận'); }
   if(UI.certOpen===m) render();
