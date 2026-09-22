@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Nunito:wght@400;600;700;800&family=Alex+Brush&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Nunito:wght@400;600;700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 html,body{margin:0;padding:0;background:#E9EDF2}
@@ -1260,22 +1260,23 @@ function loadCertFrame(){ if(_certFrameImg) return Promise.resolve(_certFrameImg
 async function renderCert(days){
   const m=days||UI.certOpen; const c=S.certs&&S.certs[m]; if(!c) return;
   let frame; try{ frame=await loadCertFrame(); }catch(e){ UI.certImg=null; toast('Không tải được khung chứng nhận'); return; }
-  try{ await document.fonts.load('700 46px "Space Grotesk"'); await document.fonts.load('400 72px "Alex Brush"'); }catch(e){}
+  try{ await document.fonts.load('700 46px "Space Grotesk"'); await document.fonts.load('700 72px "Dancing Script"'); }catch(e){}
   const W=CERT_W,H=CERT_H;
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
   x.fillStyle='#fff'; x.fillRect(0,0,W,H);
   x.drawImage(frame,0,0,W,H);
   const WHITE='#FBFBFB', RED='#7A0509';
-  // Xoá 4 vùng chữ mẫu ("Your Name" / "EQ EXPLORER" / mô tả / ngày cấp) trước khi vẽ đè chữ thật
+  // Xoá 4 vùng chữ mẫu ("Your Name" / "EQ EXPLORER" / mô tả / ngày cấp) trước khi vẽ đè chữ thật.
+  // Toạ độ đo lại từ khung nền gốc (không đè lên "THIS CERTIFIES THAT" phía trên hay dải ruy băng góc phải dưới).
   x.fillStyle=WHITE;
-  x.fillRect(500,465,700,117);
-  x.fillRect(560,632,420,50);
-  x.fillRect(530,680,470,42);
-  x.fillRect(1000,905,260,47);
+  x.fillRect(500,472,700,110);
+  x.fillRect(550,638,460,62);
+  x.fillRect(500,698,540,40);
+  x.fillRect(1000,908,220,37);
   x.textBaseline='alphabetic'; x.textAlign='center';
-  // Họ tên (chữ ký thảo)
-  const name=(c.name||'Học viên EQ GYM'); let fs=72; x.font=fs+'px "Alex Brush",cursive';
-  while(x.measureText(name).width>680 && fs>32){ fs-=2; x.font=fs+'px "Alex Brush",cursive'; }
+  // Họ tên (chữ ký thảo) — Dancing Script vì hỗ trợ dấu tiếng Việt đúng, Alex Brush bị lỗi dấu (ă/ễ nổi lệch)
+  const name=(c.name||'Học viên EQ GYM'); let fs=72; x.font='700 '+fs+'px "Dancing Script",cursive';
+  while(x.measureText(name).width>680 && fs>32){ fs-=2; x.font='700 '+fs+'px "Dancing Script",cursive'; }
   x.fillStyle=RED; x.fillText(name, 768, 555);
   // Danh hiệu (vd EQ EXPLORER)
   x.font='700 46px "Space Grotesk",sans-serif'; x.fillStyle=RED;
