@@ -1260,7 +1260,16 @@ function loadCertFrame(){ if(_certFrameImg) return Promise.resolve(_certFrameImg
 async function renderCert(days){
   const m=days||UI.certOpen; const c=S.certs&&S.certs[m]; if(!c) return;
   let frame; try{ frame=await loadCertFrame(); }catch(e){ UI.certImg=null; toast('Không tải được khung chứng nhận'); return; }
-  try{ await document.fonts.load('700 46px "Space Grotesk"'); await document.fonts.load('700 72px "Dancing Script"'); }catch(e){}
+  // Phải truyền mẫu chữ tiếng Việt vào fonts.load: Google Fonts tách subset theo unicode-range, canvas không tự
+  // kích hoạt tải subset "vietnamese" như DOM → thiếu mẫu thì ă/ễ/ị... bị vẽ bằng font dự phòng (loạn font giữa chữ).
+  const VN_SAMPLE='ăâđêôơưĂÂĐÊÔƠƯạảãấầẩẫậắằẳẵặẹẻẽếềểễệỉịĩọỏõốồổỗộớờởỡợụủũứừửữựỳỵỷỹ'+((c.name||'')+'Học viên EQ GYM');
+  try{ await Promise.all([
+    document.fonts.load('700 46px "Space Grotesk"', 'EQ AMBASSADOR'),
+    document.fonts.load('700 16px "Space Grotesk"', 'ĐOÀN THỊ HẢI LOAN'+VN_SAMPLE),
+    document.fonts.load('700 72px "Dancing Script"', VN_SAMPLE),
+    document.fonts.load('500 27px "Nunito"', 'Completed 365 Days of EQ Practice'),
+    document.fonts.load('600 24px "Nunito"', '0123456789/')
+  ]); }catch(e){}
   const W=CERT_W,H=CERT_H;
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
   x.fillStyle='#fff'; x.fillRect(0,0,W,H);
