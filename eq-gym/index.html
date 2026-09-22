@@ -1287,6 +1287,13 @@ async function renderCert(days){
   // Ngày cấp
   x.font='600 24px "Nunito",sans-serif'; x.fillStyle='#333';
   x.fillText(certDate(c), 1130, 936);
+  // Khung nền gốc (file khách gửi) in sẵn sai chính tả "DOÀN THÌ HẢI LOAN" — xoá và vẽ đè đúng tên chuyên gia.
+  x.fillStyle=WHITE;
+  x.fillRect(325,884,345,55);
+  x.textAlign='left'; x.font='700 21px "Space Grotesk",sans-serif'; x.fillStyle='#161616';
+  try{ x.letterSpacing='2px'; }catch(e){}
+  x.fillText('ĐOÀN THỊ HẢI LOAN', 338, 916);
+  try{ x.letterSpacing='0px'; }catch(e){}
   try{ UI.certImg=cv.toDataURL('image/png'); }catch(e){ UI.certImg=null; toast('Không tạo được ảnh chứng nhận'); }
   if(UI.certOpen===m) render();
 }
