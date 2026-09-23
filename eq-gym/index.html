@@ -369,7 +369,7 @@ function load(){
 }
 function dflt(){ return {done:[],ans:{},scores:{},graded:{},streak:0,last:null,bounty:0,scen:{},history:{},chat:[],practices:0,quiz:null,qans:{},certs:{},freezes:1,bestStreak:0,broken:null,streak7:false,freezeBuys:[]}; }
 let S=load();
-let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:'',certOpen:null,certImg:null,zv:null,streakOpen:false};
+let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:'',certOpen:null,certImg:null,zv:null,streakOpen:false,pay:null,aff:null,affOpen:false};
 let snd; try{ snd=Object.assign({bgm:true,sfx:true,track:0,vol:0.5}, JSON.parse(localStorage.getItem('eqgym_sound_v1'))||{}); }catch(e){ snd={bgm:true,sfx:true,track:0,vol:0.5}; }
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ _mem=S; } scheduleSync(); syncPoints(); }
 function saveSnd(){ try{ localStorage.setItem('eqgym_sound_v1',JSON.stringify(snd)); }catch(e){} }
@@ -761,6 +761,7 @@ function acctHtml(){
       ${!prem?`<button onclick="UI.settingsOpen=false;showPremium()" style="width:100%;margin-top:10px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px">🚀 Nâng cấp Premium ${fmt(PREMIUM_PRICE)}đ/năm</button>`:''}
       ${prem&&COMMUNITY_URL?`<a href="${COMMUNITY_URL}" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;background:#fff;color:#0F1923;min-height:46px">👥 Vào cộng đồng EQ GYM</a>`:''}
       ${isAdmin()?`<a href="admin/" style="display:block;text-align:center;width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px;box-sizing:border-box">🛡️ Trang Quản trị</a>`:''}
+      ${affCardHtml()}
       <button onclick="signOut()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:46px">Đăng xuất</button></div>`;
   }
   return `<div style="margin-bottom:14px"><div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 14px;font-size:12.5px;color:#5C6B7A;line-height:1.6;font-weight:600">Đăng nhập để lưu tiến trình & nhận báo cáo EQ trên mọi thiết bị.</div>
@@ -780,7 +781,8 @@ async function initAuth(){
   const {data,error}=await sb.auth.getSession(); if(error){ console.error('getSession',error); toast('Lỗi đăng nhập: '+error.message); }
   await applySession(data.session); cleanAuthParams(); sb.auth.onAuthStateChange((_e,session)=>{ applySession(session); });
 }
-async function applySession(session){ if(session&&session.user){ const u=session.user; let prof=null; try{ const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} if(!prof){ try{ await sb.from('profiles').upsert({id:u.id,email:u.email}); const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} } if(prof&&prof.banned){ try{ await sb.auth.signOut(); }catch(e){} AUTH=null; toast('Tài khoản của bạn đã bị khoá. Liên hệ admin để biết thêm.'); render(); return; } AUTH={id:u.id,email:u.email,premium_until:prof&&prof.premium_until,role:prof&&prof.role,pay_code:prof&&prof.pay_code}; await migrateIfNeeded(); await pullRemote(); } else { AUTH=null; } render(); }
+async function applySession(session){ if(session&&session.user){ const u=session.user; let prof=null; try{ const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} if(!prof){ try{ await sb.from('profiles').upsert({id:u.id,email:u.email}); const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle(); prof=data; }catch(e){} } if(prof&&prof.banned){ try{ await sb.auth.signOut(); }catch(e){} AUTH=null; toast('Tài khoản của bạn đã bị khoá. Liên hệ admin để biết thêm.'); render(); return; } AUTH={id:u.id,email:u.email,premium_until:prof&&prof.premium_until,role:prof&&prof.role,pay_code:prof&&prof.pay_code,ref_code:prof&&prof.ref_code}; await migrateIfNeeded(); await pullRemote(); claimStoredRef(); } else { AUTH=null; UI.aff=null; } render(); }
+async function refreshProfile(){ if(!BACKEND||!AUTH) return; try{ const {data}=await sb.from('profiles').select('premium_until,role,ref_code').eq('id',AUTH.id).maybeSingle(); if(data){ AUTH.premium_until=data.premium_until; AUTH.role=data.role; AUTH.ref_code=data.ref_code; } }catch(e){} }
 async function migrateIfNeeded(){ if(!BACKEND||!AUTH) return; try{ if(localStorage.getItem('eqgym_migrated')) return; }catch(e){ return; } await syncPush(); for(const k of Object.keys(S.history)){ const arr=S.history[k]||[]; for(let i=arr.length-1;i>=0;i--){ await pushPractice(+k,arr[i]); } } if(S.quiz) await pushAssessment(S.quiz.scores,S.quiz.answers); try{ localStorage.setItem('eqgym_migrated','1'); }catch(e){} }
 
 /* ===== PREMIUM + THANH TOÁN ===== */
@@ -793,12 +795,64 @@ function modalPremium(){
     <button onclick="startCheckout()" style="width:100%;margin-top:14px;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:50px">Nâng cấp ngay</button>
     <button onclick="closePremium()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:48px">Để sau</button></div></div>`;
 }
-function startCheckout(){ UI.premOpen=false; if(!BACKEND||!AUTH){ toast('Đăng nhập trước để nâng cấp Premium nhé'); render(); openAuth(); return; } UI.payMode='pay'; UI.payOpen=true; render(); }
+function startCheckout(){ UI.premOpen=false; if(!BACKEND||!AUTH){ toast('Đăng nhập trước để nâng cấp Premium nhé'); render(); openAuth(); return; } UI.payMode='pay'; UI.payOpen=true;
+  if(!(UI.pay&&UI.pay.stage==='qr')){ UI.pay={stage:'form'}; UI.voucherMsg=''; if(!UI.voucherCode) autoApplyRef(); }
+  render(); }
 function vietQRUrl(code,amount){ if(!BANK.bank_code||!BANK.account_no) return ''; return `https://img.vietqr.io/image/${BANK.bank_code}-${BANK.account_no}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(code)}&accountName=${encodeURIComponent(BANK.account_name||'')}`; }
-async function applyVoucher(){ const code=val('vcinput'); if(!code){ toast('Nhập mã trước đã'); return; } try{ const {data,error}=await sb.rpc('redeem_voucher',{p_code:code}); if(error) throw error; const r=data&&data[0]; if(r&&r.ok){ UI.voucherCode=code.toUpperCase(); UI.voucherDiscount=r.discount_amount; UI.voucherMsg=''; toast('Áp dụng mã thành công 🎉'); } else { UI.voucherMsg=(r&&r.message)||'Mã không hợp lệ'; } }catch(e){ UI.voucherMsg='Lỗi: '+e.message; } render(); }
-function removeVoucher(){ UI.voucherCode=''; UI.voucherDiscount=0; UI.voucherMsg=''; render(); }
+/* 1 ô nhập dùng chung: voucher hoặc mã giới thiệu — server (apply_code) tự phân biệt */
+async function applyCode(code,silent){ try{ const {data,error}=await sb.rpc('apply_code',{p_code:code}); if(error) throw error; const r=data&&data[0]; if(r&&r.ok){ UI.voucherCode=code.toUpperCase(); UI.voucherDiscount=r.discount_amount; UI.voucherKind=r.kind; UI.voucherMsg=''; if(!silent) toast(r.kind==='ref'?'Đã áp dụng mã giới thiệu 🎉':'Áp dụng mã thành công 🎉'); return true; } if(!silent) UI.voucherMsg=(r&&r.message)||'Mã không hợp lệ'; }catch(e){ if(!silent) UI.voucherMsg='Lỗi: '+e.message; } return false; }
+async function applyVoucher(){ const code=val('vcinput'); if(!code){ toast('Nhập mã trước đã'); return; } await applyCode(code,false); render(); }
+async function autoApplyRef(){ let code=''; try{ code=localStorage.getItem('eqgym_ref_claimed')||''; }catch(e){} if(!code) return; const ok=await applyCode(code,true); if(ok&&UI.payOpen) render(); }
+function removeVoucher(){ UI.voucherCode=''; UI.voucherDiscount=0; UI.voucherKind=''; UI.voucherMsg=''; render(); }
 function openBookClaim(){ UI.payMode='book'; UI.payOpen=true; render(); }
-function closePay(){ UI.payOpen=false; render(); }
+function closePay(){ UI.payOpen=false; if(!(UI.pay&&UI.pay.stage==='qr')) stopPayWatch(); render(); }
+function payManual(){ UI.pay={stage:'manual',auto:true}; render(); }
+
+/* ===== THANH TOÁN TỰ ĐỘNG (PayOS qua Edge Function) =====
+   Tạo đơn → QR động đúng số tiền → webhook kích hoạt → app nhận Realtime/poll → báo xong.
+   Chưa cấu hình key PayOS → server trả payos_not_configured → tự rơi về chuyển khoản tay. */
+let _payWatch=null,_payChan=null,_payTick=null;
+function stopPayWatch(){ clearInterval(_payWatch); _payWatch=null; clearInterval(_payTick); _payTick=null; if(_payChan){ try{ sb.removeChannel(_payChan); }catch(e){} _payChan=null; } }
+function fmtLeft(s){ s=Math.max(0,s|0); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+async function fnError(error){ let code='',msg=error&&error.message||'Lỗi'; try{ const j=await error.context.json(); code=j.error||''; msg=j.message||j.error||msg; }catch(e){} return {code,msg}; }
+async function createPayOrder(){
+  if(!BACKEND||!AUTH){ toast('Cần đăng nhập'); return; }
+  if(_payBusy) return; _payBusy=true; UI.pay={stage:'creating'}; render();
+  try{
+    const {data,error}=await sb.functions.invoke('payos',{body:{action:'create',code:UI.voucherCode||''}});
+    if(error){ const e=await fnError(error);
+      if(e.code==='payos_not_configured'){ UI.pay={stage:'manual',auto:false}; render(); _payBusy=false; return; }
+      if(e.code==='code_rejected'){ UI.voucherMsg=e.msg; UI.voucherCode=''; UI.voucherDiscount=0; UI.voucherKind=''; UI.pay={stage:'form'}; render(); _payBusy=false; return; }
+      throw new Error(e.msg); }
+    if(data&&data.free){ stopPayWatch(); await refreshProfile(); UI.pay={stage:'done'}; clearRefClaimed(); sfx('success'); render(); _payBusy=false; return; }
+    UI.pay={stage:'qr',order:data,qrImg:null,left:0}; render();
+    renderPayQR(data); watchPayment(data.payment_id,data.expires_at);
+  }catch(e){ UI.pay={stage:'form'}; toast('Không tạo được mã QR: '+e.message); render(); }
+  _payBusy=false;
+}
+function loadQrLib(){ if(window.QRCode) return Promise.resolve(); return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+async function renderPayQR(o){ let img='';
+  try{ await loadQrLib(); img=await window.QRCode.toDataURL(o.qr_code,{width:520,margin:1,errorCorrectionLevel:'M'}); }
+  catch(e){ if(o.bin&&o.account_number) img=`https://img.vietqr.io/image/${o.bin}-${o.account_number}-compact2.png?amount=${o.amount}&addInfo=${encodeURIComponent(o.description||'')}&accountName=${encodeURIComponent(o.account_name||'')}`; }
+  if(UI.pay&&UI.pay.stage==='qr'&&UI.pay.order&&UI.pay.order.payment_id===o.payment_id){ UI.pay.qrImg=img; render(); } }
+function watchPayment(pid,expiresAt){
+  stopPayWatch();
+  const check=async()=>{ try{ const {data}=await sb.from('payments').select('status').eq('id',pid).maybeSingle(); if(data) onPayStatus(pid,data.status); }catch(e){} };
+  try{ _payChan=sb.channel('pay-'+pid).on('postgres_changes',{event:'UPDATE',schema:'public',table:'payments',filter:'id=eq.'+pid},p=>onPayStatus(pid,p.new&&p.new.status)).subscribe(); }catch(e){}
+  _payWatch=setInterval(check,5000);
+  const end=new Date(expiresAt).getTime(); UI.pay.left=Math.floor((end-Date.now())/1000);
+  _payTick=setInterval(()=>{ if(!UI.pay||UI.pay.stage!=='qr') return; const left=Math.floor((end-Date.now())/1000); UI.pay.left=left; const el=document.getElementById('payleft'); if(el) el.textContent=fmtLeft(left); if(left<=0){ stopPayWatch(); UI.pay={stage:'expired',order:UI.pay.order}; render(); } },1000);
+}
+async function onPayStatus(pid,status){ if(!UI.pay||!UI.pay.order||UI.pay.order.payment_id!==pid) return;
+  if(status==='approved'){ stopPayWatch(); await refreshProfile(); UI.pay={stage:'done'}; clearRefClaimed(); sfx('success'); if(!UI.payOpen) toast('🎉 Premium đã được kích hoạt!'); render(); }
+  else if(status==='expired'||status==='cancelled'||status==='rejected'){ stopPayWatch(); UI.pay={stage:'expired',order:UI.pay.order}; render(); } }
+async function recheckPay(){ if(!UI.pay||!UI.pay.order) return; const pid=UI.pay.order.payment_id; toast('Đang kiểm tra với cổng thanh toán...');
+  try{ const {data,error}=await sb.functions.invoke('payos',{body:{action:'recheck',payment_id:pid}}); if(error){ const e=await fnError(error); throw new Error(e.msg); }
+    if(data&&data.status==='PAID') onPayStatus(pid,'approved');
+    else if(data&&(data.status==='CANCELLED'||data.status==='EXPIRED')) onPayStatus(pid,'expired');
+    else toast('Chưa thấy tiền về — nếu vừa chuyển, đợi thêm 1–2 phút rồi kiểm tra lại nhé');
+  }catch(e){ toast('Lỗi kiểm tra: '+e.message); } }
+function clearRefClaimed(){ try{ localStorage.removeItem('eqgym_ref_claimed'); }catch(e){} }
 function modalPay(){
   let inner;
   if(UI.payMode==='book'){
@@ -810,30 +864,64 @@ function modalPay(){
       <button onclick="closePay()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px">Đóng</button>
       <p id="paymsg" style="font-size:11.5px;color:#5C6B7A;margin:8px 0 0;font-weight:600"></p>`;
   } else {
+    const st=(UI.pay&&UI.pay.stage)||'form';
     const code=(AUTH&&AUTH.pay_code)||('EQGYM-'+(AUTH?AUTH.id.slice(0,6).toUpperCase():'XXXX'));
-    const disc=UI.voucherDiscount||0; const finalPrice=Math.max(0,PREMIUM_PRICE-disc); const qr=vietQRUrl(code,finalPrice);
-    inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">💳 Nâng cấp Premium</h3>
-      <div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 13px;margin-top:10px">
-        <div style="font-size:12px;color:#5C6B7A;font-weight:700;margin-bottom:6px">Mã giảm giá (nếu có)</div>
+    const disc=UI.voucherDiscount||0; const finalPrice=Math.max(0,PREMIUM_PRICE-disc);
+    const BTN='width:100%;margin-top:10px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px';
+    const BTN2='width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px';
+    const codeBox=`<div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 13px;margin-top:10px">
+        <div style="font-size:12px;color:#5C6B7A;font-weight:700;margin-bottom:6px">Mã giảm giá / mã giới thiệu (nếu có)</div>
         <div style="display:flex;gap:8px">
-          <input id="vcinput" value="${esc(UI.voucherCode||'')}" ${UI.voucherDiscount?'disabled':''} placeholder="Nhập mã" style="flex:1;background:#fff;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:14px;text-transform:uppercase">
+          <input id="vcinput" value="${esc(UI.voucherCode||'')}" ${UI.voucherDiscount?'disabled':''} placeholder="Nhập mã" onkeydown="if(event.key==='Enter')applyVoucher()" style="flex:1;min-width:0;background:#fff;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:14px;text-transform:uppercase">
           ${UI.voucherDiscount?`<button onclick="removeVoucher()" style="border:1px solid #E3E8EE;border-radius:11px;padding:0 14px;font-size:13px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:44px">Gỡ</button>`:`<button onclick="applyVoucher()" style="border:none;border-radius:11px;padding:0 16px;font-size:13px;font-weight:800;cursor:pointer;background:#0F1923;color:#fff;min-height:44px">Áp dụng</button>`}
         </div>
-        ${UI.voucherDiscount?`<p style="margin:8px 0 0;font-size:12.5px;color:#0A6E5D;font-weight:700">✓ Đã áp dụng — giảm ${fmt(UI.voucherDiscount)}đ</p>`:''}
+        ${UI.voucherDiscount?`<p style="margin:8px 0 0;font-size:12.5px;color:#0A6E5D;font-weight:700">✓ ${UI.voucherKind==='ref'?'Mã giới thiệu':'Mã giảm giá'} — giảm ${fmt(UI.voucherDiscount)}đ</p>`:''}
         ${UI.voucherMsg?`<p style="margin:8px 0 0;font-size:12.5px;color:#E85B5B;font-weight:700">${esc(UI.voucherMsg)}</p>`:''}
-      </div>
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:12px">
+      </div>`;
+    const priceRow=`<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:12px">
         <span style="color:#5C6B7A;font-size:13px;font-weight:600">Số tiền cần chuyển</span>
         <span style="font-family:'Space Grotesk';font-size:22px;font-weight:800">${fmt(finalPrice)}đ${disc?`<span style="font-size:12px;color:#8A97A5;font-weight:700;text-decoration:line-through;margin-left:6px">${fmt(PREMIUM_PRICE)}đ</span>`:''}</span>
-      </div>
+      </div>`;
+    if(st==='form'||st==='creating'){
+      inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">💳 Nâng cấp Premium</h3>${codeBox}${priceRow}
+        <p style="color:#5C6B7A;font-size:12.5px;margin:8px 0 0;line-height:1.6;font-weight:600">Quét mã QR bằng app ngân hàng bất kỳ — tiền về là <b style="color:#0F1923">Premium tự mở ngay</b>, không cần chờ duyệt.</p>
+        <button onclick="createPayOrder()" ${st==='creating'?'disabled':''} style="${BTN};margin-top:12px;opacity:${st==='creating'?.7:1}">${st==='creating'?'<span class="sp" style="border-color:#BFEFE4;border-top-color:#fff"></span> Đang tạo mã QR...':'Thanh toán QR — kích hoạt tự động'}</button>
+        <button onclick="payManual()" style="${BTN2}">Chuyển khoản thủ công (admin duyệt)</button>
+        <button onclick="closePay()" style="${BTN2};color:#5C6B7A">Đóng</button>`;
+    } else if(st==='qr'){
+      const o=UI.pay.order;
+      inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">📲 Quét mã để thanh toán</h3>
+        <p style="color:#5C6B7A;font-size:12.5px;margin:0;line-height:1.6;font-weight:600">Mở app ngân hàng, quét mã dưới đây. Tiền về là Premium tự kích hoạt trong vài giây.</p>
+        <div style="text-align:center;margin:12px 0">${UI.pay.qrImg?`<img src="${UI.pay.qrImg}" alt="QR thanh toán" style="width:250px;max-width:82%;border-radius:12px;border:1px solid #E3E8EE;background:#fff;padding:6px">`:`<div style="height:250px;display:flex;align-items:center;justify-content:center"><span class="sp"></span></div>`}</div>
+        <div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:11px 13px;font-size:12.5px;font-weight:600;line-height:1.7">Số tiền: <b style="font-family:'Space Grotesk';font-size:15px">${fmt(o.amount)}đ</b> · Nội dung: <b>${esc(o.description||'')}</b><br><span style="color:#5C6B7A">${esc(o.account_name||'')}${o.account_number?' · '+esc(o.account_number):''}</span></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;font-size:13px;font-weight:700;color:#0A6E5D"><span class="sp"></span> Đang chờ thanh toán… <span id="payleft" style="font-family:'Space Grotesk';color:#5C6B7A">${fmtLeft(UI.pay.left||0)}</span></div>
+        ${o.checkout_url?`<a href="${esc(o.checkout_url)}" target="_blank" rel="noopener" style="display:block;text-align:center;${BTN2}">Mở trang thanh toán PayOS</a>`:''}
+        <button onclick="recheckPay()" style="${BTN2}">Đã chuyển mà chưa thấy kích hoạt?</button>
+        <button onclick="closePay()" style="${BTN2};color:#5C6B7A">Đóng — mã còn hiệu lực, thanh toán sau vẫn được</button>`;
+    } else if(st==='done'){
+      inner=`<div style="text-align:center;padding:8px 0 4px"><div style="font-size:52px;line-height:1">🎉</div>
+        <h3 style="margin:12px 0 4px;font-family:'Space Grotesk';font-size:19px;font-weight:700">Premium đã kích hoạt!</h3>
+        <p style="color:#5C6B7A;font-size:13px;margin:0;line-height:1.6;font-weight:600">${AUTH&&AUTH.premium_until?'Có hiệu lực đến <b style="color:#0F1923">'+new Date(AUTH.premium_until).toLocaleDateString('vi-VN')+'</b>. ':''}Toàn bộ 30 buổi tập, Coach AI và cộng đồng đã mở cho bạn.</p></div>
+        <button onclick="closePay()" style="${BTN};margin-top:16px">Bắt đầu luyện tập ›</button>`;
+    } else if(st==='expired'){
+      inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">⏱ Mã QR đã hết hạn</h3>
+        <p style="color:#5C6B7A;font-size:12.5px;margin:0;line-height:1.6;font-weight:600">Nếu bạn <b style="color:#0F1923">đã chuyển tiền</b> theo mã cũ, bấm kiểm tra lại — hệ thống sẽ đối soát với cổng thanh toán. Nếu chưa, tạo mã mới.</p>
+        <button onclick="createPayOrder()" style="${BTN};margin-top:14px">Tạo mã QR mới</button>
+        <button onclick="recheckPay()" style="${BTN2}">Tôi đã chuyển — kiểm tra lại</button>
+        <button onclick="closePay()" style="${BTN2};color:#5C6B7A">Đóng</button>`;
+    } else {
+      const qr=vietQRUrl(code,finalPrice); const auto=UI.pay&&UI.pay.auto;
+      inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">💳 Nâng cấp Premium</h3>${codeBox}${priceRow}
       <p style="color:#5C6B7A;font-size:12.5px;margin:8px 0 0;line-height:1.6;font-weight:600">Chuyển khoản đúng số tiền, <b style="color:#0F1923">nội dung ghi: ${esc(code)}</b>. Sau khi chuyển, bấm "Tôi đã chuyển khoản" để admin duyệt kích hoạt Premium.</p>
       ${qr?`<div style="text-align:center;margin:12px 0"><img src="${qr}" alt="QR" style="width:230px;max-width:80%;border-radius:12px;border:1px solid #E3E8EE;background:#fff;padding:6px"></div>`:`<div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px;font-size:13px;margin-top:10px;color:#5C6B7A;font-weight:600">Chủ app chưa cấu hình tài khoản ngân hàng. Vui lòng liên hệ để được hướng dẫn thanh toán.</div>`}
       <div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-size:12.5px;margin-top:6px;font-weight:600">Nội dung CK: <b>${esc(code)}</b> · Số tiền: <b>${fmt(finalPrice)}đ</b></div>
-      <button onclick="submitPayment('${esc(code)}')" style="width:100%;margin-top:12px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px">Tôi đã chuyển khoản ✅</button>
-      <button onclick="closePay()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px">Đóng</button>
+      <button onclick="submitPayment('${esc(code)}')" style="${BTN};margin-top:12px">Tôi đã chuyển khoản ✅</button>
+      ${auto?`<button onclick="UI.pay={stage:'form'};render()" style="${BTN2}">← Quay lại thanh toán QR tự động</button>`:''}
+      <button onclick="closePay()" style="${BTN2};color:#5C6B7A">Đóng</button>
       <p id="paymsg" style="font-size:11.5px;color:#5C6B7A;margin:8px 0 0;font-weight:600"></p>`;
+    }
   }
-  return `<div onclick="if(event.target===this)closePay()" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:75;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">${inner}</div></div>`;
+  return `<div onclick="if(event.target===this)closePay()" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:75;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">${inner}</div></div>`;
 }
 let _payBusy=false;
 async function submitPayment(code){
@@ -855,6 +943,42 @@ async function submitPayment(code){
   _payBusy=false;
 }
 async function submitBook(){ if(!BACKEND||!AUTH){ toast('Cần đăng nhập'); return; } const name=val('bkname'),phone=val('bkphone'),addr=val('bkaddr'),msg=document.getElementById('paymsg'); if(!name||!phone||!addr){ if(msg) msg.textContent='Điền đủ thông tin nhé'; return; } try{ let taken=0; try{ const {data}=await sb.rpc('book_seats_taken'); taken=data||0; }catch(e){} if(taken>=50){ if(msg) msg.textContent='Rất tiếc, 50 suất sách đã hết. Cảm ơn bạn đã quan tâm!'; return; } await sb.from('book_claims').insert({user_id:AUTH.id,full_name:name,phone,address:addr,seq:taken+1}); if(msg) msg.innerHTML='✅ Đã nhận thông tin! Sách sẽ được gửi tới bạn sớm. Cảm ơn bạn!'; toast('Đã đăng ký nhận sách 🎁'); }catch(e){ if(msg) msg.textContent='Lỗi: '+e.message; } }
+
+/* ===== 🎁 AFFILIATE — mã giới thiệu kiêm voucher, hoa hồng % (cấu hình trong trang Quản trị) ===== */
+function affLink(){ const code=(UI.aff&&UI.aff.ref_code)||(AUTH&&AUTH.ref_code)||''; return location.origin+location.pathname.replace(/index\.html$/,'')+'?ref='+code; }
+async function loadAffiliate(){ if(!BACKEND||!AUTH) return; try{ const {data,error}=await sb.rpc('affiliate_me'); if(error) throw error; UI.aff=data||{enabled:false}; }catch(e){ UI.aff={enabled:false,err:e.message}; } if(UI.settingsOpen) render(); }
+function affCardHtml(){
+  if(!BACKEND||!AUTH) return ''; const a=UI.aff;
+  const box='margin-top:10px;background:linear-gradient(150deg,#FFF8EA,#FFF0D3);border:1px solid #F3DDAE;border-radius:14px;padding:13px 14px';
+  if(!a) return `<div style="${box}"><b style="font-size:14px">🎁 Giới thiệu bạn bè</b><div style="font-size:12px;color:#8A6A2E;font-weight:600;margin-top:4px">Đang tải...</div></div>`;
+  if(a.enabled===false) return '';
+  if(a.blocked) return `<div style="${box}"><b style="font-size:14px">🎁 Giới thiệu bạn bè</b><div style="font-size:12px;color:#8A6A2E;font-weight:600;margin-top:4px">Tính năng giới thiệu của tài khoản này đang tạm khoá. Liên hệ admin để biết thêm.</div></div>`;
+  const pct=Math.round((+a.rate||0)*100), per=Math.round(Math.max(0,PREMIUM_PRICE-(+a.referee_discount||0))*(+a.rate||0)), p=a.payout_info||{};
+  const inp='width:100%;margin-top:8px;background:#fff;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:13.5px';
+  return `<div style="${box}">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:14px">🎁 Giới thiệu bạn bè</b><span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:#E0930A;color:#fff;white-space:nowrap">Nhận ${pct}% hoa hồng</span></div>
+    <p style="margin:6px 0 0;font-size:12.5px;color:#5C4A27;line-height:1.6;font-weight:600">Bạn bè nhập mã <b style="font-family:'Space Grotesk';color:#0F1923;letter-spacing:1px">${esc(a.ref_code||'')}</b> khi nâng cấp được giảm <b style="color:#0F1923">${fmt(a.referee_discount)}đ</b>, bạn nhận <b style="color:#0F1923">${fmt(per)}đ</b> mỗi đơn.</p>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <input id="afflink" readonly value="${esc(affLink())}" onclick="this.select()" style="flex:1;min-width:0;background:#fff;border:1px solid #E3E8EE;border-radius:11px;padding:10px;font-size:12px;color:#5C6B7A">
+      <button onclick="copyAffLink()" style="border:none;border-radius:11px;padding:0 13px;font-size:12.5px;font-weight:800;cursor:pointer;background:#0F1923;color:#fff;min-height:42px">Copy</button>
+      ${navigator.share?`<button onclick="shareAffLink()" style="border:1px solid #E3E8EE;border-radius:11px;padding:0 12px;font-size:12.5px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:42px">Chia sẻ</button>`:''}
+    </div>
+    <div style="display:flex;gap:6px;margin-top:10px;text-align:center">
+      ${[[a.referred_count,'Đã giới thiệu'],[a.paid_count,'Đã mua'],[fmt(a.pending_sum)+'đ','Chờ trả'],[fmt(a.paid_sum)+'đ','Đã nhận']].map(x=>`<div style="flex:1;background:#fff;border:1px solid #F3DDAE;border-radius:11px;padding:8px 4px"><b style="display:block;font-family:'Space Grotesk';font-size:13px">${x[0]}</b><span style="font-size:9.5px;color:#8A6A2E;font-weight:700">${x[1]}</span></div>`).join('')}
+    </div>
+    <button onclick="UI.affOpen=!UI.affOpen;render()" style="width:100%;margin-top:10px;border:1px solid #F3DDAE;border-radius:11px;padding:10px;font-size:12.5px;font-weight:800;cursor:pointer;background:#fff;color:#8A6A2E">${UI.affOpen?'Ẩn thông tin nhận tiền':(p.account?'Tài khoản nhận hoa hồng: '+esc(p.bank||'')+' · '+esc(p.account):'Nhập tài khoản nhận hoa hồng ›')}</button>
+    ${UI.affOpen?`<input id="aff_bank" value="${esc(p.bank||'')}" placeholder="Ngân hàng (vd Vietcombank)" style="${inp}"><input id="aff_acc" value="${esc(p.account||'')}" placeholder="Số tài khoản" style="${inp}"><input id="aff_name" value="${esc(p.name||'')}" placeholder="Tên chủ tài khoản" style="${inp}">
+      <button onclick="saveAffPayout()" style="width:100%;margin-top:8px;border:none;border-radius:11px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;background:#E0930A;color:#fff">Lưu thông tin</button>
+      <p style="margin:8px 0 0;font-size:11px;color:#8A6A2E;font-weight:600;line-height:1.5">Hoa hồng được duyệt sau ${a.hold_days||7} ngày kể từ khi bạn bè thanh toán và chuyển khoản theo đợt.</p>`:''}
+  </div>`;
+}
+async function copyAffLink(){ const t=affLink(); try{ await navigator.clipboard.writeText(t); }catch(e){ const el=document.getElementById('afflink'); if(el){ el.select(); try{ document.execCommand('copy'); }catch(x){} } } toast('Đã copy link giới thiệu'); }
+async function shareAffLink(){ const code=(UI.aff&&UI.aff.ref_code)||''; try{ await navigator.share({title:'EQ GYM — Phòng tập cảm xúc',text:'Tập EQ 30 ngày cùng mình nhé! Nhập mã '+code+' khi nâng cấp để được giảm giá.',url:affLink()}); }catch(e){} }
+async function saveAffPayout(){ const info={bank:val('aff_bank'),account:val('aff_acc'),name:val('aff_name')}; if(!info.bank||!info.account||!info.name){ toast('Điền đủ 3 thông tin nhé'); return; } try{ const {error}=await sb.from('profiles').update({payout_info:info}).eq('id',AUTH.id); if(error) throw error; if(UI.aff) UI.aff.payout_info=info; UI.affOpen=false; toast('Đã lưu thông tin nhận hoa hồng'); render(); }catch(e){ toast('Lỗi: '+e.message); } }
+/* Mở link ?ref=MÃ rồi đăng nhập → gắn người giới thiệu ngay; giữ mã lại để tự điền khi nâng cấp lần đầu */
+async function claimStoredRef(){ if(!BACKEND||!AUTH) return; let code=''; try{ code=localStorage.getItem('eqgym_ref')||''; }catch(e){} if(!code) return;
+  try{ const {data}=await sb.rpc('claim_referral',{p_code:code}); const r=data&&data[0]; if(r&&r.ok){ try{ localStorage.setItem('eqgym_ref_claimed',code); }catch(e){} toast('Đã ghi nhận mã giới thiệu '+code+' — bạn được giảm giá khi nâng cấp Premium'); } }catch(e){}
+  try{ localStorage.removeItem('eqgym_ref'); }catch(e){} }
 
 /* ===== ADMIN ===== (trang riêng — xem admin/index.html) */
 
@@ -1165,7 +1289,7 @@ function fixedUI(){
   if(UI.toastMsg) h+=`<div style="position:fixed;left:50%;transform:translateX(-50%);bottom:120px;background:#0F1923;color:#fff;font-weight:700;padding:13px 20px;border-radius:13px;z-index:99;box-shadow:0 12px 34px rgba(15,25,35,.3);font-size:13px;max-width:86%;text-align:center;animation:fade .25s">${esc(UI.toastMsg)}</div>`;
   return h;
 }
-function sheet(inner){ return `<div onclick="if(event.target===this){UI.settingsOpen=false;UI.musicOpen=false;UI.streakOpen=false;render()}" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:70;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">${inner}</div></div>`; }
+function sheet(inner){ return `<div onclick="if(event.target===this){UI.settingsOpen=false;UI.musicOpen=false;UI.streakOpen=false;render()}" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:70;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">${inner}</div></div>`; }
 function sheetSettings(){
   if(CODE_MODE && OPEN_MODE && (!MEMBER||MEMBER.role!=='admin')){
     const m=MEMBER||{};
@@ -1397,14 +1521,27 @@ async function zvRenderNow(){ const z=UI.zv; if(!z||!z.pdf||!z.fitW) return; con
 /* ===== HANDLERS ===== */
 function toggleZone(m){ const cur=(function(){ const nextN=[...Array(30).keys()].find(n=>!isDone(n)); return nextN!=null?LESSONS[nextN].module:3; })(); const o=Object.assign({},UI.openZones||{[cur]:true}); o[m]=!o[m]; UI.openZones=o; render(); }
 function onAns(){ const ta=document.getElementById('ans'); if(!ta||UI.n==null) return; S.ans[UI.n]=ta.value; save(); const m=document.getElementById('savedmsg'); if(m){ m.textContent='Đã lưu vào nhật ký ✓'; clearTimeout(window._sm); window._sm=setTimeout(()=>{ if(m) m.textContent=''; },1400); } }
-function openSettings(){ renderAcctPre(); UI.settingsOpen=true; sfx('tap'); render(); }
+function openSettings(){ renderAcctPre(); UI.settingsOpen=true; sfx('tap'); render(); if(BACKEND&&AUTH&&!UI.aff) loadAffiliate(); }
 function renderAcctPre(){ if(BACKEND) refreshAuthUI(); }
 function clearChat(){ if(confirm('Xóa toàn bộ hội thoại với Coach AI?')){ S.chat=[]; save(); render(); } }
 
 /* ===== BOOT ===== */
 document.addEventListener('pointerdown',function once(){ syncBgm(); }, {once:false});
 document.addEventListener('keydown',e=>{ if(!UI.zv) return; if(e.key==='Escape') zvClose(); else if(e.key==='ArrowRight') zvGo(1); else if(e.key==='ArrowLeft') zvGo(-1); else if(e.key==='+'||e.key==='=') zvSet(UI.zv.s*1.4); else if(e.key==='-') zvSet(UI.zv.s/1.4); });
+/* ?ref=MÃ từ link giới thiệu → giữ lại tới khi đăng nhập xong mới gắn (claimStoredRef).
+   ?pay=done|cancel là PayOS đưa về sau khi thanh toán trên trang của họ — chỉ cần báo nhẹ. */
+function captureUrlParams(){
+  try{
+    const url=new URL(location.href); let changed=false;
+    const ref=(url.searchParams.get('ref')||'').trim().toUpperCase();
+    if(ref){ try{ localStorage.setItem('eqgym_ref',ref); }catch(e){} url.searchParams.delete('ref'); changed=true; }
+    const pay=url.searchParams.get('pay');
+    if(pay){ url.searchParams.delete('pay'); changed=true; setTimeout(()=>toast(pay==='done'?'Đã nhận thanh toán — Premium sẽ tự kích hoạt trong giây lát':'Bạn đã huỷ thanh toán'),600); }
+    if(changed) history.replaceState(null,'',url.pathname+url.search+url.hash);
+  }catch(e){}
+}
 async function boot(){
+  captureUrlParams();
   if(BACKEND){ try{ await initAuth(); }catch(e){ console.warn(e); } }
   if(CODE_MODE && OPEN_MODE){ const g=guestStored(); if(g&&g.email){ try{ const d=await api({action:'guest',name:g.name,email:g.email}); if(d&&d.ok){ MEMBER={code:d.code,name:d.name,role:'guest',session:d.session||'',email:g.email}; try{ localStorage.setItem('eqgym_guest',JSON.stringify({code:d.code,session:d.session,name:d.name,email:g.email})); }catch(e){} if(d.progress) applyProgress(d.progress); } else { try{ localStorage.removeItem('eqgym_guest'); }catch(e){} } }catch(e){} } }
   else if(CODE_MODE){ const c=memberCode(); if(c){ try{ const d=await api({action:'login',code:c}); if(d&&d.ok){ MEMBER={code:c,name:d.name,points:d.points||0,role:d.role,session:d.session||''}; try{localStorage.setItem('eqgym_session',MEMBER.session||'');}catch(e){} if(d.role==='member'){ if(d.progress) applyProgress(d.progress); else S.bounty=d.points||0; startHeartbeat(); } } else { try{ localStorage.removeItem('eqgym_code'); localStorage.removeItem('eqgym_session'); }catch(e){} } }catch(e){} } }
