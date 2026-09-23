@@ -371,14 +371,18 @@ function dflt(){ return {done:[],ans:{},scores:{},graded:{},streak:0,last:null,b
 let S=load();
 let UI={view:'home',n:null,step:0,settingsOpen:false,musicOpen:false,premOpen:false,payOpen:false,treasure:null,toastMsg:'',grading:false,scenLoading:false,mp4Ok:null,openZones:null,chatTyping:false,chatInput:'',keyInput:'',certOpen:null,certImg:null,zv:null,streakOpen:false,pay:null,aff:null,affOpen:false};
 let snd; try{ snd=Object.assign({bgm:true,sfx:true,track:0,vol:0.5}, JSON.parse(localStorage.getItem('eqgym_sound_v1'))||{}); }catch(e){ snd={bgm:true,sfx:true,track:0,vol:0.5}; }
-function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ _mem=S; } scheduleSync(); syncPoints(); }
+function save(){ S.mt=Date.now(); try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ _mem=S; } scheduleSync(); syncPoints(); }
 function saveSnd(){ try{ localStorage.setItem('eqgym_sound_v1',JSON.stringify(snd)); }catch(e){} }
 
 /* ===== ĐỒNG BỘ SUPABASE (no-op ở local) ===== */
 let _syncT=null;
 function scheduleSync(){ if(!BACKEND||!AUTH) return; clearTimeout(_syncT); _syncT=setTimeout(syncPush,1500); }
+/* Trạng thái phụ (ngày nghỉ phép, kỷ lục, chuỗi vừa đứt, workbook…) — trước chỉ nằm trong máy, đổi máy là mất */
+const SYNC_STATE_KEYS=['freezes','bestStreak','broken','streak7','freezeBuys','practices','qans'];
+function syncState(){ const st={}; SYNC_STATE_KEYS.forEach(k=>{ if(S[k]!==undefined) st[k]=S[k]; }); st.freezeBuys=(S.freezeBuys||[]).slice(-10);
+  const ans={}; Object.keys(S.ans||{}).forEach(k=>{ if(S.ans[k]) ans[k]=String(S.ans[k]).slice(0,2000); }); st.ans=ans; return st; }
 async function syncPush(){ if(!BACKEND||!AUTH) return;
-  try{ await sb.from('progress').upsert({user_id:AUTH.id,done:S.done,bounty:S.bounty,streak:S.streak,last_date:S.last,graded:S.graded,scen:S.scen,certs:S.certs||{},updated_at:new Date().toISOString()}); }catch(e){ console.warn('sync',e); } }
+  try{ await sb.from('progress').upsert({user_id:AUTH.id,done:S.done,bounty:S.bounty,streak:S.streak,last_date:S.last,graded:S.graded,scen:S.scen,certs:S.certs||{},state:syncState(),updated_at:new Date(S.mt||Date.now()).toISOString()}); }catch(e){ console.warn('sync',e); } }
 async function pushPractice(n,rec){ if(!BACKEND||!AUTH) return;
   try{ await sb.from('practices').insert({user_id:AUTH.id,lesson_n:n,scenario:rec.scenario,answer:rec.answer,dims:rec.dims,score:rec.score,feedback:rec.feedback,tip:rec.tip,by:rec.by}); }catch(e){ console.warn('pp',e); } }
 async function pushAssessment(scores,answers){ if(!BACKEND||!AUTH) return;
@@ -386,7 +390,15 @@ async function pushAssessment(scores,answers){ if(!BACKEND||!AUTH) return;
 async function pullRemote(){ if(!BACKEND||!AUTH) return;
   try{
     const {data:pg}=await sb.from('progress').select('*').eq('user_id',AUTH.id).maybeSingle();
-    if(pg){ S.done=[...new Set([...(S.done||[]),...(pg.done||[])])]; S.bounty=Math.max(S.bounty||0,pg.bounty||0); S.streak=Math.max(S.streak||0,pg.streak||0); S.last=pg.last_date||S.last; S.graded=Object.assign({},S.graded,pg.graded||{}); S.scen=Object.assign({},S.scen,pg.scen||{}); S.certs=Object.assign({},S.certs||{},pg.certs||{}); }
+    /* Trước đây lấy Math.max(máy, server) cho EP & chuỗi → chuỗi đã đứt "sống lại", EP đã tiêu được hoàn
+       khi tải lại app. Giờ: EP/chuỗi/ngày nghỉ… lấy theo bản sửa sau cùng; bài đã xong, chứng nhận thì gộp. */
+    if(pg){ const st=pg.state||{}, remoteT=new Date(pg.updated_at||0).getTime(), remoteNewer=remoteT>(S.mt||0);
+      S.done=[...new Set([...(S.done||[]),...(pg.done||[])])];
+      S.graded=remoteNewer?Object.assign({},S.graded,pg.graded||{}):Object.assign({},pg.graded||{},S.graded);
+      S.scen=remoteNewer?Object.assign({},S.scen,pg.scen||{}):Object.assign({},pg.scen||{},S.scen);
+      S.certs=Object.assign({},pg.certs||{},S.certs||{});
+      S.ans=remoteNewer?Object.assign({},S.ans||{},st.ans||{}):Object.assign({},st.ans||{},S.ans||{});
+      if(remoteNewer){ S.bounty=pg.bounty||0; S.streak=pg.streak||0; S.last=pg.last_date||S.last; SYNC_STATE_KEYS.forEach(k=>{ if(st[k]!==undefined) S[k]=st[k]; }); } }
     const {data:pr}=await sb.from('practices').select('*').eq('user_id',AUTH.id).order('created_at',{ascending:false}).limit(500);
     if(pr){ pr.forEach(r=>{ const ts=new Date(r.created_at).getTime(); S.history[r.lesson_n]=S.history[r.lesson_n]||[]; if(!S.history[r.lesson_n].some(x=>Math.abs((x.ts||0)-ts)<2000 && x.score===r.score)) S.history[r.lesson_n].push({ts,scenario:r.scenario,answer:r.answer,dims:r.dims,score:r.score,feedback:r.feedback,tip:r.tip,by:r.by}); }); Object.keys(S.history).forEach(k=>S.history[k].sort((a,b)=>(b.ts||0)-(a.ts||0))); }
     save();
@@ -398,6 +410,8 @@ function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,
 function fmt(x){ return (x||0).toLocaleString('vi-VN'); }
 function isDone(n){ return S.done.includes(n); }
 function isPremium(){ return !!(!BACKEND || (AUTH && (AUTH.role==='admin'||AUTH.role==='super_admin' || (AUTH.premium_until && new Date(AUTH.premium_until)>new Date())))); }
+function isLifetime(d){ return !!d && new Date(d).getFullYear()>=2900; }
+function premiumUntilText(d){ return isLifetime(d)?'Premium trọn đời':'Premium đến '+new Date(d).toLocaleDateString('vi-VN'); }
 function isAdmin(){ return AUTH && (AUTH.role==='admin'||AUTH.role==='super_admin'); }
 function unlocked(n){ if(n===0) return true; if(!isPremium()) return false; return isDone(n-1); }
 function rankOf(d){ let r=RANKS[0]; for(const x of RANKS){ if(d>=x[0]) r=x; } return r; }
@@ -757,8 +771,8 @@ function val(id){ const e=document.getElementById(id); return e?(e.value||'').tr
 function acctHtml(){
   if(!BACKEND) return `<div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 14px;font-size:12.5px;margin-bottom:12px;color:#5C6B7A;line-height:1.6;font-weight:600">☁️ Backend chưa cấu hình — app đang chạy <b style="color:#0F1923">chế độ local</b> (lưu trên máy này, mở khóa toàn bộ). Chủ app xem <b style="color:#0A6E5D">docs/SETUP-SUPABASE.md</b> để bật tài khoản & Premium.</div>`;
   if(AUTH){ const prem=isPremium();
-    return `<div style="margin-bottom:14px"><div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700">👤 <b style="color:#0A6E5D">${esc(AUTH.email||'Học viên')}</b> <span style="display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:6px;${prem?'background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff':'background:#E3E8EE;color:#5C6B7A'}">${prem?'★ PREMIUM':'Miễn phí'}</span>${prem&&AUTH.premium_until?`<div style="font-size:11px;color:#5C6B7A;margin-top:5px;font-weight:600">Premium đến ${new Date(AUTH.premium_until).toLocaleDateString('vi-VN')}</div>`:(prem&&isAdmin()?`<div style="font-size:11px;color:#5C6B7A;margin-top:5px;font-weight:600">Premium theo quyền ${AUTH.role==='super_admin'?'Super Admin':'Admin'}</div>`:'')}</div>
-      ${!prem?`<button onclick="UI.settingsOpen=false;showPremium()" style="width:100%;margin-top:10px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px">🚀 Nâng cấp Premium ${fmt(PREMIUM_PRICE)}đ/năm</button>`:''}
+    return `<div style="margin-bottom:14px"><div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700">👤 <b style="color:#0A6E5D">${esc(AUTH.email||'Học viên')}</b> <span style="display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:6px;${prem?'background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff':'background:#E3E8EE;color:#5C6B7A'}">${prem?'★ PREMIUM':'Miễn phí'}</span>${prem&&AUTH.premium_until?`<div style="font-size:11px;color:#5C6B7A;margin-top:5px;font-weight:600">${premiumUntilText(AUTH.premium_until)}</div>`:(prem&&isAdmin()?`<div style="font-size:11px;color:#5C6B7A;margin-top:5px;font-weight:600">Premium theo quyền ${AUTH.role==='super_admin'?'Super Admin':'Admin'}</div>`:'')}</div>
+      ${!prem?`<button onclick="UI.settingsOpen=false;showPremium()" style="width:100%;margin-top:10px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px">🚀 Nâng cấp Premium trọn đời ${fmt(PREMIUM_PRICE)}đ</button>`:''}
       ${prem&&COMMUNITY_URL?`<a href="${COMMUNITY_URL}" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;background:#fff;color:#0F1923;min-height:46px">👥 Vào cộng đồng EQ GYM</a>`:''}
       ${isAdmin()?`<a href="admin/" style="display:block;text-align:center;width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px;box-sizing:border-box">🛡️ Trang Quản trị</a>`:''}
       ${affCardHtml()}
@@ -790,7 +804,7 @@ function showPremium(){ UI.premOpen=true; render(); }
 function closePremium(){ UI.premOpen=false; render(); }
 function modalPremium(){
   return `<div onclick="if(event.target===this)closePremium()" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:75;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">
-    <div style="background:linear-gradient(155deg,#0F1923,#0A6E5D);border-radius:18px;padding:18px 16px;color:#fff"><h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:19px;color:#fff">EQ GYM Premium</h3><div style="font-size:26px;font-weight:900;font-family:'Space Grotesk';margin:6px 0">${fmt(PREMIUM_PRICE)}đ <span style="font-size:13px;color:#7FA39B;font-weight:600">/ năm</span></div>
+    <div style="background:linear-gradient(155deg,#0F1923,#0A6E5D);border-radius:18px;padding:18px 16px;color:#fff"><h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:19px;color:#fff">EQ GYM Premium</h3><div style="font-size:26px;font-weight:900;font-family:'Space Grotesk';margin:6px 0">${fmt(PREMIUM_PRICE)}đ <span style="font-size:13px;color:#7FA39B;font-weight:600">· trọn đời, thanh toán 1 lần</span></div>
     <ul style="margin:10px 0;padding-left:2px;list-style:none">${['Mở khóa toàn bộ 30 buổi tập & luyện tập','Workbook thực hành mỗi ngày ngay trong app','Coach AI chấm điểm 4 trụ & tình huống không giới hạn','Bảng thi đua & tham gia cộng đồng rèn luyện EQ GYM'].map(x=>`<li style="font-size:13.5px;padding:4px 0;display:flex;gap:8px"><span>✅</span><span>${x}</span></li>`).join('')}</ul></div>
     <button onclick="startCheckout()" style="width:100%;margin-top:14px;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:50px">Nâng cấp ngay</button>
     <button onclick="closePremium()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:48px">Để sau</button></div></div>`;
@@ -901,7 +915,7 @@ function modalPay(){
     } else if(st==='done'){
       inner=`<div style="text-align:center;padding:8px 0 4px"><div style="font-size:52px;line-height:1">🎉</div>
         <h3 style="margin:12px 0 4px;font-family:'Space Grotesk';font-size:19px;font-weight:700">Premium đã kích hoạt!</h3>
-        <p style="color:#5C6B7A;font-size:13px;margin:0;line-height:1.6;font-weight:600">${AUTH&&AUTH.premium_until?'Có hiệu lực đến <b style="color:#0F1923">'+new Date(AUTH.premium_until).toLocaleDateString('vi-VN')+'</b>. ':''}Toàn bộ 30 buổi tập, Coach AI và cộng đồng đã mở cho bạn.</p></div>
+        <p style="color:#5C6B7A;font-size:13px;margin:0;line-height:1.6;font-weight:600">${AUTH&&AUTH.premium_until?(isLifetime(AUTH.premium_until)?'Bạn được dùng <b style="color:#0F1923">trọn đời</b>. ':'Có hiệu lực đến <b style="color:#0F1923">'+new Date(AUTH.premium_until).toLocaleDateString('vi-VN')+'</b>. '):''}Toàn bộ 30 buổi tập, Coach AI và cộng đồng đã mở cho bạn.</p></div>
         <button onclick="closePay()" style="${BTN};margin-top:16px">Bắt đầu luyện tập ›</button>`;
     } else if(st==='expired'){
       inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">⏱ Mã QR đã hết hạn</h3>

@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           orderCode: o.order_code, amount: o.amount, description, returnUrl, cancelUrl, expiredAt,
           buyerEmail: user.email || undefined,
-          items: [{ name: `EQ GYM Premium ${o.months} thang`, quantity: 1, price: o.amount }],
+          items: [{ name: o.months > 0 ? `EQ GYM Premium ${o.months} thang` : "EQ GYM Premium tron doi", quantity: 1, price: o.amount }],
           signature,
         }),
       });

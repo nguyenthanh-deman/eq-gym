@@ -213,10 +213,10 @@ async function saveVoucher(id){
 async function changeRole(uid,role){ try{ const {error}=await sb.rpc('admin_set_role',{p_user_id:uid,p_role:role}); if(error) throw error; loadUsers(); }catch(e){ alert('Lỗi: '+e.message); loadUsers(); } }
 async function revokePremium(uid){ if(!confirm('Xoá Premium của học viên này?')) return; try{ const {error}=await sb.rpc('admin_revoke_premium',{p_user_id:uid}); if(error) throw error; loadUsers(); }catch(e){ alert('Lỗi: '+e.message); } }
 async function grantPremium(uid){
-  const raw=prompt('Cấp/gia hạn Premium — nhập số tháng:','12');
+  const raw=prompt('Cấp Premium — nhập 0 = TRỌN ĐỜI, hoặc số tháng nếu chỉ cấp có thời hạn:','0');
   if(raw==null) return;
   const months=parseInt(raw,10);
-  if(!months||months<=0){ alert('Số tháng không hợp lệ'); return; }
+  if(isNaN(months)||months<0){ alert('Số tháng không hợp lệ'); return; }
   try{ const {error}=await sb.rpc('admin_grant_premium',{p_user_id:uid,p_months:months}); if(error) throw error; loadUsers(); }
   catch(e){ alert('Lỗi: '+e.message); }
 }
@@ -386,7 +386,7 @@ function viewPending(){
       ${payos?`<p style="margin:0 0 8px;font-size:11.5px;color:#5C6B7A;font-weight:600;line-height:1.5">Đơn QR tự động — tiền về là tự kích hoạt. Chỉ bấm "Đối soát" nếu học viên báo đã chuyển mà chưa được mở.</p>
       <button onclick="recheckOrder('${p.id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:#0F1923;color:#fff;min-height:44px">Đối soát với PayOS</button>
       <button onclick="closeOrder('${p.id}')" style="width:100%;margin-top:8px;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:42px">Đóng đơn</button>`
-      :`<button onclick="approvePay('${p.id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:44px">Duyệt · +${p.months||12} tháng Premium</button>
+      :`<button onclick="approvePay('${p.id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:44px">Duyệt · ${p.months>0?'+'+p.months+' tháng Premium':'Premium trọn đời'}</button>
       <button onclick="rejectPay('${p.id}')" style="width:100%;margin-top:8px;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:42px">Từ chối</button>`}`);
   });
   h+=pager(UI.pendingPage,total,PAGE_SIZE,'pendingPageGo(-1)','pendingPageGo(1)');
@@ -473,7 +473,7 @@ function viewUsers(){
           <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.email||u.id)}${isSelf?' (bạn)':''}</div>
           <div style="font-size:10.5px;color:#5C6B7A;font-weight:600">${new Date(u.created_at).toLocaleDateString('vi-VN')}${roleLabel}</div>
         </div>
-        ${u.banned?pill('Đã khoá','warn'):pill(prem?'★ Premium':'Free',prem?'good':'off')}
+        ${u.banned?pill('Đã khoá','warn'):pill(prem?(new Date(u.premium_until).getFullYear()>=2900?'★ Trọn đời':'★ Đến '+new Date(u.premium_until).toLocaleDateString('vi-VN')):'Free',prem?'good':'off')}
       </div>
       ${isSuper&&!isSelf?`<div style="display:flex;gap:6px;flex-wrap:wrap">
         <select onchange="changeRole('${u.id}',this.value)" style="flex:1;min-width:112px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:9px;padding:8px;font-size:11.5px;font-weight:700">
