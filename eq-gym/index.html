@@ -394,7 +394,7 @@ async function pullRemote(){ if(!BACKEND||!AUTH) return;
 }
 
 /* ===== HELPERS ===== */
-function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function fmt(x){ return (x||0).toLocaleString('vi-VN'); }
 function isDone(n){ return S.done.includes(n); }
 function isPremium(){ return !!(!BACKEND || (AUTH && (AUTH.role==='admin'||AUTH.role==='super_admin' || (AUTH.premium_until && new Date(AUTH.premium_until)>new Date())))); }
