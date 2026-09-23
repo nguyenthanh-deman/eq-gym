@@ -840,7 +840,7 @@ async function createPayOrder(){
       throw new Error(e.msg); }
     if(data&&data.free){ stopPayWatch(); await refreshProfile(); UI.pay={stage:'done'}; clearRefClaimed(); sfx('success'); render(); _payBusy=false; return; }
     UI.pay={stage:'qr',order:data,qrImg:null,left:0}; render();
-    renderPayQR(data); watchPayment(data.payment_id,data.expires_at);
+    renderPayQR(data); watchPayment(data.payment_id,data.expires_at,data.server_now);
   }catch(e){ UI.pay={stage:'form'}; toast('Không tạo được mã QR: '+e.message); render(); }
   _payBusy=false;
 }
@@ -849,12 +849,12 @@ async function renderPayQR(o){ let img='';
   try{ await loadQrLib(); img=await window.QRCode.toDataURL(o.qr_code,{width:520,margin:1,errorCorrectionLevel:'M'}); }
   catch(e){ if(o.bin&&o.account_number) img=`https://img.vietqr.io/image/${o.bin}-${o.account_number}-compact2.png?amount=${o.amount}&addInfo=${encodeURIComponent(o.description||'')}&accountName=${encodeURIComponent(o.account_name||'')}`; }
   if(UI.pay&&UI.pay.stage==='qr'&&UI.pay.order&&UI.pay.order.payment_id===o.payment_id){ UI.pay.qrImg=img; render(); } }
-function watchPayment(pid,expiresAt){
+function watchPayment(pid,expiresAt,serverNow){
   stopPayWatch();
   const check=async()=>{ try{ const {data}=await sb.from('payments').select('status').eq('id',pid).maybeSingle(); if(data) onPayStatus(pid,data.status); }catch(e){} };
   try{ _payChan=sb.channel('pay-'+pid).on('postgres_changes',{event:'UPDATE',schema:'public',table:'payments',filter:'id=eq.'+pid},p=>onPayStatus(pid,p.new&&p.new.status)).subscribe(); }catch(e){}
   _payWatch=setInterval(check,5000);
-  const end=new Date(expiresAt).getTime(); UI.pay.left=Math.floor((end-Date.now())/1000);
+  const skew=serverNow?(new Date(serverNow).getTime()-Date.now()):0; const end=new Date(expiresAt).getTime()-skew; UI.pay.left=Math.floor((end-Date.now())/1000);
   _payTick=setInterval(()=>{ if(!UI.pay||UI.pay.stage!=='qr') return; const left=Math.floor((end-Date.now())/1000); UI.pay.left=left; const el=document.getElementById('payleft'); if(el) el.textContent=fmtLeft(left); if(left<=0){ stopPayWatch(); UI.pay={stage:'expired',order:UI.pay.order}; render(); } },1000);
 }
 async function onPayStatus(pid,status){ if(!UI.pay||!UI.pay.order||UI.pay.order.payment_id!==pid) return;
@@ -917,6 +917,12 @@ function modalPay(){
         <h3 style="margin:12px 0 4px;font-family:'Space Grotesk';font-size:19px;font-weight:700">Premium đã kích hoạt!</h3>
         <p style="color:#5C6B7A;font-size:13px;margin:0;line-height:1.6;font-weight:600">${AUTH&&AUTH.premium_until?(isLifetime(AUTH.premium_until)?'Bạn được dùng <b style="color:#0F1923">trọn đời</b>. ':'Có hiệu lực đến <b style="color:#0F1923">'+new Date(AUTH.premium_until).toLocaleDateString('vi-VN')+'</b>. '):''}Toàn bộ 30 buổi tập, Coach AI và cộng đồng đã mở cho bạn.</p></div>
         <button onclick="closePay()" style="${BTN};margin-top:16px">Bắt đầu luyện tập ›</button>`;
+    } else if(st==='submitted'){
+      const sp=UI.pay;
+      inner=`<div style="text-align:center;padding:8px 0 4px"><div style="font-size:48px;line-height:1">⏳</div>
+        <h3 style="margin:12px 0 6px;font-family:'Space Grotesk';font-size:18px;font-weight:700">${sp.dup?'Bạn đã có yêu cầu đang chờ duyệt':'Đã gửi yêu cầu nâng cấp'}</h3>
+        <p style="color:#5C6B7A;font-size:13px;margin:0;line-height:1.65;font-weight:600">${sp.dup?'Không cần gửi lại — admin sẽ kiểm tra khoản chuyển của bạn và kích hoạt Premium sớm.':'Admin sẽ đối chiếu khoản chuyển <b style="color:#0F1923">'+fmt(sp.amount)+'đ</b> (nội dung <b style="color:#0F1923">'+esc(sp.code||'')+'</b>) và kích hoạt Premium trọn đời cho bạn sớm. Cảm ơn bạn!'}</p></div>
+        <button onclick="closePay()" style="${BTN};margin-top:16px">Đã hiểu</button>`;
     } else if(st==='expired'){
       inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">⏱ Mã QR đã hết hạn</h3>
         <p style="color:#5C6B7A;font-size:12.5px;margin:0;line-height:1.6;font-weight:600">Nếu bạn <b style="color:#0F1923">đã chuyển tiền</b> theo mã cũ, bấm kiểm tra lại — hệ thống sẽ đối soát với cổng thanh toán. Nếu chưa, tạo mã mới.</p>
@@ -945,13 +951,10 @@ async function submitPayment(code){
   try{
     const {error}=await sb.from('payments').insert({user_id:AUTH.id,amount:amt,code,voucher_code:UI.voucherCode||null,discount_amount:disc,status:'pending'});
     if(error){
-      if(error.code==='23505'||/duplicate key/i.test(error.message)){
-        if(msg) msg.innerHTML='⏳ Bạn đã có 1 yêu cầu chuyển khoản đang chờ admin duyệt rồi — không cần gửi lại, đợi admin xử lý nhé!';
-        toast('Đã có yêu cầu đang chờ duyệt');
-      } else throw error;
+      if(error.code==='23505'||/duplicate key/i.test(error.message)){ UI.pay={stage:'submitted',dup:true}; render(); }
+      else throw error;
     } else {
-      if(msg) msg.innerHTML='✅ Đã ghi nhận. Admin sẽ duyệt và kích hoạt Premium cho bạn sớm. Cảm ơn bạn!';
-      toast('Đã gửi yêu cầu — chờ duyệt'); UI.voucherCode=''; UI.voucherDiscount=0;
+      UI.pay={stage:'submitted',amount:amt,code}; UI.voucherCode=''; UI.voucherDiscount=0; UI.voucherKind=''; clearRefClaimed(); sfx('success'); render();
     }
   }catch(e){ if(msg) msg.textContent='Lỗi: '+e.message; }
   _payBusy=false;

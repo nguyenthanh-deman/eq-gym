@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       return json({
         payment_id: o.payment_id, order_code: o.order_code, amount: o.amount, discount: o.discount, months: o.months,
         checkout_url: d.checkoutUrl, qr_code: d.qrCode, bin: d.bin, account_number: d.accountNumber, account_name: d.accountName,
-        description: d.description, expires_at: new Date(expiredAt * 1000).toISOString(),
+        description: d.description, expires_at: new Date(expiredAt * 1000).toISOString(), server_now: new Date().toISOString(),
       });
     }
 
