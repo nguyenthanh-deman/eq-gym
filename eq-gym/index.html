@@ -265,7 +265,11 @@ function viewAdminCode(){
 }
 
 /* ===== Thanh toán / cộng đồng (Premium) ===== */
-const BANK={ bank_code:"SEAB", account_no:"00500000120722", account_name:"DOAN THI HAI LOAN" };
+/* Tài khoản nhận tiền cho chuyển khoản thủ công — trùng tài khoản SePay (VietinBank, BIN 970415).
+   VietinBank: nội dung phải bắt đầu bằng SEVQR thì SePay mới ghi nhận giao dịch. */
+const BANK={ bank_code:"970415", account_no:"100888328564", account_name:"DOAN THI HAI LOAN", bank_name:"VietinBank", prefix:"SEVQR " };
+/* Bỏ ký tự đặc biệt (dịch vụ VietQR tự bỏ dấu "-") để chữ trên màn hình khớp nội dung trong mã QR */
+function manualContent(code){ return (BANK.prefix||"")+String(code||"").replace(/[^A-Za-z0-9]/g,""); }
 const COMMUNITY_URL="https://zaloapp.com/qr/g/9cisw0ktwt4zowguavqb?src=qr";
 const PREMIUM_PRICE=499000;
 
@@ -816,7 +820,7 @@ function modalPremium(){
 function startCheckout(){ UI.premOpen=false; if(!BACKEND||!AUTH){ toast('Đăng nhập trước để nâng cấp Premium nhé'); render(); openAuth(); return; } UI.payMode='pay'; UI.payOpen=true;
   if(!(UI.pay&&UI.pay.stage==='qr')){ UI.pay={stage:'form'}; UI.voucherMsg=''; if(!UI.voucherCode) autoApplyRef(); }
   render(); }
-function vietQRUrl(code,amount){ if(!BANK.bank_code||!BANK.account_no) return ''; return `https://img.vietqr.io/image/${BANK.bank_code}-${BANK.account_no}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(code)}&accountName=${encodeURIComponent(BANK.account_name||'')}`; }
+function vietQRUrl(code,amount){ if(!BANK.bank_code||!BANK.account_no) return ''; return `https://img.vietqr.io/image/${BANK.bank_code}-${BANK.account_no}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(manualContent(code))}&accountName=${encodeURIComponent(BANK.account_name||'')}`; }
 /* 1 ô nhập dùng chung: voucher hoặc mã giới thiệu — server (apply_code) tự phân biệt */
 async function applyCode(code,silent){ try{ const {data,error}=await sb.rpc('apply_code',{p_code:code}); if(error) throw error; const r=data&&data[0]; if(r&&r.ok){ UI.voucherCode=code.toUpperCase(); UI.voucherDiscount=r.discount_amount; UI.voucherKind=r.kind; UI.voucherMsg=''; if(!silent) toast(r.kind==='ref'?'Đã áp dụng mã giới thiệu 🎉':'Áp dụng mã thành công 🎉'); return true; } if(!silent) UI.voucherMsg=(r&&r.message)||'Mã không hợp lệ'; }catch(e){ if(!silent) UI.voucherMsg='Lỗi: '+e.message; } return false; }
 async function applyVoucher(){ const code=val('vcinput'); if(!code){ toast('Nhập mã trước đã'); return; } await applyCode(code,false); render(); }
@@ -937,9 +941,9 @@ function modalPay(){
     } else {
       const qr=vietQRUrl(code,finalPrice); const auto=UI.pay&&UI.pay.auto;
       inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">💳 Nâng cấp Premium</h3>${codeBox}${priceRow}
-      <p style="color:#5C6B7A;font-size:12.5px;margin:8px 0 0;line-height:1.6;font-weight:600">Chuyển khoản đúng số tiền, <b style="color:#0F1923">nội dung ghi: ${esc(code)}</b>. Sau khi chuyển, bấm "Tôi đã chuyển khoản" để admin duyệt kích hoạt Premium.</p>
+      <p style="color:#5C6B7A;font-size:12.5px;margin:8px 0 0;line-height:1.6;font-weight:600">Chuyển khoản tới <b style="color:#0F1923">${esc(BANK.bank_name)} ${esc(BANK.account_no)} · ${esc(BANK.account_name)}</b>, đúng số tiền, <b style="color:#0F1923">nội dung ghi: ${esc(manualContent(code))}</b> (giữ nguyên chữ SEVQR ở đầu). Sau khi chuyển, bấm "Tôi đã chuyển khoản" để admin duyệt kích hoạt Premium.</p>
       ${qr?`<div style="text-align:center;margin:12px 0"><img src="${qr}" alt="QR" style="width:230px;max-width:80%;border-radius:12px;border:1px solid #E3E8EE;background:#fff;padding:6px"></div>`:`<div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px;font-size:13px;margin-top:10px;color:#5C6B7A;font-weight:600">Chủ app chưa cấu hình tài khoản ngân hàng. Vui lòng liên hệ để được hướng dẫn thanh toán.</div>`}
-      <div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-size:12.5px;margin-top:6px;font-weight:600">Nội dung CK: <b>${esc(code)}</b> · Số tiền: <b>${fmt(finalPrice)}đ</b></div>
+      <div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-size:12.5px;margin-top:6px;font-weight:600">Nội dung CK: <b>${esc(manualContent(code))}</b> · Số tiền: <b>${fmt(finalPrice)}đ</b></div>
       <button onclick="submitPayment('${esc(code)}')" style="${BTN};margin-top:12px">Tôi đã chuyển khoản ✅</button>
       ${auto?`<button onclick="UI.pay={stage:'form'};render()" style="${BTN2}">← Quay lại thanh toán QR tự động</button>`:''}
       <button onclick="closePay()" style="${BTN2};color:#5C6B7A">Đóng</button>
