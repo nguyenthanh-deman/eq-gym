@@ -982,7 +982,7 @@ function affCardHtml(){
   const pct=Math.round((+a.rate||0)*100), per=Math.round(Math.max(0,PREMIUM_PRICE-(+a.referee_discount||0))*(+a.rate||0)), p=a.payout_info||{};
   const inp='width:100%;margin-top:8px;background:#fff;border:1px solid #E3E8EE;border-radius:11px;padding:11px;font-size:13.5px';
   return `<div style="${box}">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:14px">🎁 Giới thiệu bạn bè</b><span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:#E0930A;color:#fff;white-space:nowrap">Nhận ${pct}% hoa hồng</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:14px">🎁 Giới thiệu bạn bè</b><span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:#E0930A;color:#fff;white-space:nowrap">${a.tier==='trusted'?'Đối tác tin cậy · ':a.tier==='partner'?'Đối tác · ':''}Nhận ${pct}% hoa hồng</span></div>
     <p style="margin:6px 0 0;font-size:12.5px;color:#5C4A27;line-height:1.6;font-weight:600">Bạn bè nhập mã <b style="font-family:'Space Grotesk';color:#0F1923;letter-spacing:1px">${esc(a.ref_code||'')}</b> khi nâng cấp được giảm <b style="color:#0F1923">${fmt(a.referee_discount)}đ</b>, bạn nhận <b style="color:#0F1923">${fmt(per)}đ</b> mỗi đơn.</p>
     <div style="display:flex;gap:6px;margin-top:10px">
       <input id="afflink" readonly value="${esc(affLink())}" onclick="this.select()" style="flex:1;min-width:0;background:#fff;border:1px solid #E3E8EE;border-radius:11px;padding:10px;font-size:12px;color:#5C6B7A">
