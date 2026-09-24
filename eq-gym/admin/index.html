@@ -391,7 +391,9 @@ function viewPending(){
       ${payos?`<p style="margin:0 0 8px;font-size:11.5px;color:#5C6B7A;font-weight:600;line-height:1.5">Đơn QR tự động — tiền về là tự kích hoạt. Chỉ bấm "Đối soát" nếu học viên báo đã chuyển mà chưa được mở.</p>
       <button onclick="recheckOrder('${p.id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:#0F1923;color:#fff;min-height:44px">Đối soát với PayOS</button>
       <button onclick="closeOrder('${p.id}')" style="width:100%;margin-top:8px;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:42px">Đóng đơn</button>`
-      :`${sepay?`<p style="margin:0 0 8px;font-size:11.5px;color:#5C6B7A;font-weight:600;line-height:1.5">Đơn QR SePay — tiền về là tự kích hoạt. Chỉ duyệt tay khi đã thấy tiền trong sao kê mà app chưa mở.</p>`:''}<button onclick="approvePay('${p.id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:44px">Duyệt · ${p.months>0?'+'+p.months+' tháng Premium':'Premium trọn đời'}</button>
+      :sepay?`<p style="margin:0 0 8px;font-size:11.5px;color:#5C6B7A;font-weight:600;line-height:1.5">Đơn QR SePay — tiền về là Premium tự mở. Nếu học viên chuyển sai nội dung, cấp Premium ở tab Học viên (nút "+ Premium", nhập 0 = trọn đời).</p>
+      <button onclick="closeOrder('${p.id}')" style="width:100%;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:42px">Đóng đơn</button>`
+      :`<button onclick="approvePay('${p.id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:44px">Duyệt · ${p.months>0?'+'+p.months+' tháng Premium':'Premium trọn đời'}</button>
       <button onclick="rejectPay('${p.id}')" style="width:100%;margin-top:8px;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:42px">Từ chối</button>`}`);
   });
   h+=pager(UI.pendingPage,total,PAGE_SIZE,'pendingPageGo(-1)','pendingPageGo(1)');
@@ -406,11 +408,12 @@ function viewHistoryList(){
   if(DATA.history==null) return h+`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p>`;
   if(!DATA.history.length) return h+`<p style="color:#5C6B7A;font-weight:600;text-align:center;padding:20px 0">Chưa có giao dịch nào.</p>`;
   DATA.history.forEach(p=>{
-    const sp=p.status==='approved'?pill(p.provider==='payos'?'Đã TT · PayOS':p.provider==='sepay'?(p.approved_by?'Duyệt tay · SePay':'Đã TT · SePay'):'Đã duyệt tay','good'):p.status==='rejected'?pill('Từ chối','warn'):p.status==='pending'?pill('Chờ duyệt','off'):pill(p.status==='cancelled'?'Đã huỷ':'Hết hạn','off');
+    const free=p.status==='approved'&&(p.amount||0)===0;
+    const sp=free?pill('Miễn phí · voucher','good'):p.status==='approved'?pill(p.provider==='payos'?'Đã TT · PayOS':p.provider==='sepay'?(p.approved_by?'Duyệt tay · SePay':'Đã TT · SePay'):'Đã duyệt tay','good'):p.status==='rejected'?pill('Từ chối','warn'):p.status==='pending'?pill('Chờ duyệt','off'):pill(p.status==='cancelled'?'Đã huỷ':'Hết hạn','off');
     h+=card(`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><h4 style="margin:0;font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.user_email||p.user_id)}</h4>${sp}</div>
       <div style="font-size:11px;color:#5C6B7A;font-weight:700">Mã CK: ${esc(p.code||'—')} · ${new Date(p.created_at).toLocaleString('vi-VN')}</div>
       <p style="margin:6px 0 0;font-size:13.5px">Số tiền: <b>${fmt(p.amount||0)}đ</b>${p.voucher_code?` · ${pill(esc(p.voucher_code),'good')}`:''}${p.ref_code?` · ${pill('GT '+esc(p.ref_code),'good')}`:''}</p>
-      ${p.provider_ref?`<div style="font-size:10.5px;color:#8A97A5;font-weight:600;margin-top:4px">Mã GD ngân hàng: ${esc(p.provider_ref)}</div>`:''}
+      ${p.provider_ref&&!/^FREE/.test(p.provider_ref)?`<div style="font-size:10.5px;color:#8A97A5;font-weight:600;margin-top:4px">Mã GD ngân hàng: ${esc(p.provider_ref)}</div>`:''}
       ${p.note?`<div style="font-size:10.5px;color:#C74848;font-weight:600;margin-top:4px">${esc(p.note)}</div>`:''}
       ${p.approved_at?`<div style="font-size:10.5px;color:#8A97A5;font-weight:600;margin-top:4px">Xử lý lúc ${new Date(p.approved_at).toLocaleString('vi-VN')}</div>`:''}`);
   });
