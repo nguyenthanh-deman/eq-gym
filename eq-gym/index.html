@@ -413,7 +413,9 @@ function isPremium(){ return !!(!BACKEND || (AUTH && (AUTH.role==='admin'||AUTH.
 function isLifetime(d){ return !!d && new Date(d).getFullYear()>=2900; }
 function premiumUntilText(d){ return isLifetime(d)?'Premium trọn đời':'Premium đến '+new Date(d).toLocaleDateString('vi-VN'); }
 function isAdmin(){ return AUTH && (AUTH.role==='admin'||AUTH.role==='super_admin'); }
-function unlocked(n){ if(n===0) return true; if(!isPremium()) return false; return isDone(n-1); }
+/* Học thử miễn phí: buổi 0 → FREE_LESSON_MAX (vẫn phải học lần lượt); từ buổi sau cần Premium */
+const FREE_LESSON_MAX=2;
+function unlocked(n){ if(n===0) return true; if(n>FREE_LESSON_MAX && !isPremium()) return false; return isDone(n-1); }
 function rankOf(d){ let r=RANKS[0]; for(const x of RANKS){ if(d>=x[0]) r=x; } return r; }
 function nextRank(d){ for(const x of RANKS){ if(d<x[0]) return x; } return null; }
 function ytId(s){ if(!s) return ''; s=s.trim(); const m=s.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{6,})/); return m?m[1]:(/^[\w-]{6,}$/.test(s)?s:''); }
@@ -456,7 +458,7 @@ function buildSteps(n){
   return steps;
 }
 function openLesson(n){
-  if(!unlocked(n)){ sfx('err'); if(BACKEND && !isPremium() && n>=1){ UI.premOpen=true; render(); } else toast('Hoàn thành buổi tập trước để mở khóa buổi này nhé!'); return; }
+  if(!unlocked(n)){ sfx('err'); if(BACKEND && !isPremium() && n>FREE_LESSON_MAX){ UI.premOpen=true; render(); } else toast('Hoàn thành buổi tập trước để mở khóa buổi này nhé!'); return; }
   sfx('tap'); STEPS=buildSteps(n);
   UI.view='lesson'; UI.n=n; UI.step=0; UI.grading=false; UI.mp4Ok=null; UI.scenLoading=false;
   const v=VIDEO_MAP[n]||{};
@@ -517,12 +519,14 @@ function bumpStreak(){
 }
 function freezeBuysThisWeek(){ const cut=Date.now()-7*86400000; return (S.freezeBuys||[]).filter(t=>t>cut).length; }
 function freezeCost(){ return Math.round(FREEZE_BASE*(1+0.5*freezeBuysThisWeek())); }
-function buyFreeze(){ const left=FREEZE_MAX_PER_WEEK-freezeBuysThisWeek(); if(left<=0){ toast('Tối đa '+FREEZE_MAX_PER_WEEK+' lần/tuần — quay lại sau nhé'); return; }
+/* Tài khoản miễn phí vẫn tích EP nhưng chỉ Premium mới được dùng EP */
+function epLocked(){ if(BACKEND && !isPremium()){ sfx('err'); toast('Nâng cấp Premium để dùng EP — điểm của bạn vẫn được giữ nguyên'); UI.streakOpen=false; UI.premOpen=true; render(); return true; } return false; }
+function buyFreeze(){ if(epLocked()) return; const left=FREEZE_MAX_PER_WEEK-freezeBuysThisWeek(); if(left<=0){ toast('Tối đa '+FREEZE_MAX_PER_WEEK+' lần/tuần — quay lại sau nhé'); return; }
   const cost=freezeCost(); if((S.bounty||0)<cost){ toast('Chưa đủ EP — luyện thêm để mua Ngày nghỉ phép'); return; }
   S.bounty-=cost; S.freezes=(S.freezes||0)+1; S.freezeBuys=[...(S.freezeBuys||[]),Date.now()]; save(); sfx('success'); toast('🧊 +1 Ngày nghỉ phép! Còn '+S.freezes+' cái.'); render(); }
 function repairLeftMs(){ return S.broken?(S.broken.at+REPAIR_WINDOW_H*3600000-Date.now()):0; }
 function repairCost(){ return S.broken?Math.min(REPAIR_CAP,Math.max(3000000,S.broken.streak*REPAIR_PER_DAY)):0; }
-function repairStreak(){ if(!S.broken||repairLeftMs()<=0) return; const cost=repairCost(); if((S.bounty||0)<cost){ toast('Chưa đủ EP để sửa chuỗi'); return; }
+function repairStreak(){ if(!S.broken||repairLeftMs()<=0) return; if(epLocked()) return; const cost=repairCost(); if((S.bounty||0)<cost){ toast('Chưa đủ EP để sửa chuỗi'); return; }
   S.bounty-=cost; S.streak=S.broken.streak; S.bestStreak=Math.max(S.bestStreak||0,S.streak); S.broken=null; save(); sfx('success'); confettiRain(); toast('🔥 Đã khôi phục chuỗi '+S.streak+' ngày!'); render(); }
 function openStreak(){ sfx('tap'); UI.streakOpen=true; render(); }
 
@@ -1358,9 +1362,9 @@ function sheetStreak(){
     <div style="flex:1;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;padding:12px;text-align:center"><b style="display:block;font-family:'Space Grotesk';font-size:18px;color:#0F1923">🧊 ${S.freezes||0}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">Ngày nghỉ phép</span></div>
   </div>
   <p style="color:#5C6B7A;font-size:12px;line-height:1.65;margin:14px 2px 0;font-weight:600">🧊 <b style="color:#0F1923">Ngày nghỉ phép</b> tự dùng khi bạn lỡ nghỉ đúng 1 ngày, giữ nguyên chuỗi tập. Nghỉ liền từ 2 ngày trở lên thì chuỗi mới reset.${S.streak7?' Bạn đã mở khóa huy hiệu 🏅 <b style="color:#0F1923">Tuần Đầu Tiên</b>!':''}</p>
-  <button onclick="buyFreeze()" ${left<=0?'disabled':''} style="width:100%;margin-top:12px;border:1px solid #B6EDDF;border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;background:#EAFBF6;color:#0A6E5D;min-height:48px;opacity:${left<=0?.5:1}">${left<=0?'Đã mua tối đa lượt tuần này':'🧊 Mua thêm — '+fmt(cost)+' EP ('+left+'/'+FREEZE_MAX_PER_WEEK+' lượt tuần này)'}</button>`;
+  <button onclick="buyFreeze()" ${left<=0?'disabled':''} style="width:100%;margin-top:12px;border:1px solid #B6EDDF;border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;background:#EAFBF6;color:#0A6E5D;min-height:48px;opacity:${left<=0?.5:1}">${(BACKEND&&!isPremium())?'🔒 Mua Ngày nghỉ phép bằng EP — dành cho Premium':(left<=0?'Đã mua tối đa lượt tuần này':'🧊 Mua thêm — '+fmt(cost)+' EP ('+left+'/'+FREEZE_MAX_PER_WEEK+' lượt tuần này)')}</button>`;
   if(S.broken && repairLeftMs()>0){ const hrs=Math.max(1,Math.ceil(repairLeftMs()/3600000));
-    h+=`<div style="margin-top:14px;background:#FDEEEE;border:1px solid #F5CFCF;border-radius:14px;padding:13px 14px"><div style="font-size:13px;font-weight:800;color:#C74848">💔 Chuỗi ${S.broken.streak} ngày vừa đứt</div><div style="font-size:11.5px;color:#8A5252;font-weight:600;margin-top:3px">Còn ${hrs} giờ để sửa lại — ${fmt(repairCost())} EP</div><button onclick="repairStreak()" style="width:100%;margin-top:9px;border:none;border-radius:11px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;background:#E85B5B;color:#fff">Sửa chuỗi ngay</button></div>`; }
+    h+=`<div style="margin-top:14px;background:#FDEEEE;border:1px solid #F5CFCF;border-radius:14px;padding:13px 14px"><div style="font-size:13px;font-weight:800;color:#C74848">💔 Chuỗi ${S.broken.streak} ngày vừa đứt</div><div style="font-size:11.5px;color:#8A5252;font-weight:600;margin-top:3px">Còn ${hrs} giờ để sửa lại — ${fmt(repairCost())} EP</div><button onclick="repairStreak()" style="width:100%;margin-top:9px;border:none;border-radius:11px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;background:#E85B5B;color:#fff">${(BACKEND&&!isPremium())?'🔒 Sửa chuỗi bằng EP — dành cho Premium':'Sửa chuỗi ngay'}</button></div>`; }
   h+=`<button onclick="UI.streakOpen=false;render()" style="width:100%;margin-top:14px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:46px">Đóng</button>`;
   return sheet(h);
 }
