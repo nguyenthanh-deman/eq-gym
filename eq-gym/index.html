@@ -851,7 +851,7 @@ async function createPayOrder(){
 function loadQrLib(){ if(window.QRCode) return Promise.resolve(); return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
 async function renderPayQR(o){ let img='';
   const viet=()=>(o.bin&&o.account_number)?`https://img.vietqr.io/image/${o.bin}-${o.account_number}-compact2.png?amount=${o.amount}&addInfo=${encodeURIComponent(o.description||'')}&accountName=${encodeURIComponent(o.account_name||'')}`:'';
-  if(!o.qr_code) img=viet();   /* SePay: không có mã EMV từ cổng → dựng VietQR tới tài khoản nhận tiền */
+  if(!o.qr_code) img=o.qr_image||viet();   /* SePay: ảnh QR do SePay dựng (VietinBank kèm SEVQR); dự phòng VietQR */
   else { try{ await loadQrLib(); img=await window.QRCode.toDataURL(o.qr_code,{width:520,margin:1,errorCorrectionLevel:'M'}); }catch(e){ img=viet(); } }
   if(UI.pay&&UI.pay.stage==='qr'&&UI.pay.order&&UI.pay.order.payment_id===o.payment_id){ UI.pay.qrImg=img; render(); } }
 function watchPayment(pid,expiresAt,serverNow){

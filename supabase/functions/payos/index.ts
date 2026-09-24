@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
         return json({
           provider: "sepay", payment_id: o.payment_id, order_code: o.order_code, amount: o.amount, discount: o.discount, months: o.months,
           checkout_url: null, qr_code: null, bin: SEPAY_BIN, account_number: SEPAY_ACC, account_name: SEPAY_NAME,
+          qr_image: `https://qr.sepay.vn/img?acc=${encodeURIComponent(SEPAY_ACC)}&bank=${SEPAY_BIN}&amount=${o.amount}&des=${encodeURIComponent(description)}&template=compact`,
           description, expires_at: expiresAt, server_now: new Date().toISOString(),
         });
       }
