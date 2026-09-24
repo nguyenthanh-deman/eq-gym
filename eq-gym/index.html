@@ -850,8 +850,9 @@ async function createPayOrder(){
 }
 function loadQrLib(){ if(window.QRCode) return Promise.resolve(); return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
 async function renderPayQR(o){ let img='';
-  try{ await loadQrLib(); img=await window.QRCode.toDataURL(o.qr_code,{width:520,margin:1,errorCorrectionLevel:'M'}); }
-  catch(e){ if(o.bin&&o.account_number) img=`https://img.vietqr.io/image/${o.bin}-${o.account_number}-compact2.png?amount=${o.amount}&addInfo=${encodeURIComponent(o.description||'')}&accountName=${encodeURIComponent(o.account_name||'')}`; }
+  const viet=()=>(o.bin&&o.account_number)?`https://img.vietqr.io/image/${o.bin}-${o.account_number}-compact2.png?amount=${o.amount}&addInfo=${encodeURIComponent(o.description||'')}&accountName=${encodeURIComponent(o.account_name||'')}`:'';
+  if(!o.qr_code) img=viet();   /* SePay: không có mã EMV từ cổng → dựng VietQR tới tài khoản nhận tiền */
+  else { try{ await loadQrLib(); img=await window.QRCode.toDataURL(o.qr_code,{width:520,margin:1,errorCorrectionLevel:'M'}); }catch(e){ img=viet(); } }
   if(UI.pay&&UI.pay.stage==='qr'&&UI.pay.order&&UI.pay.order.payment_id===o.payment_id){ UI.pay.qrImg=img; render(); } }
 function watchPayment(pid,expiresAt,serverNow){
   stopPayWatch();
@@ -911,7 +912,7 @@ function modalPay(){
       inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">📲 Quét mã để thanh toán</h3>
         <p style="color:#5C6B7A;font-size:12.5px;margin:0;line-height:1.6;font-weight:600">Mở app ngân hàng, quét mã dưới đây. Tiền về là Premium tự kích hoạt trong vài giây.</p>
         <div style="text-align:center;margin:12px 0">${UI.pay.qrImg?`<img src="${UI.pay.qrImg}" alt="QR thanh toán" style="width:250px;max-width:82%;border-radius:12px;border:1px solid #E3E8EE;background:#fff;padding:6px">`:`<div style="height:250px;display:flex;align-items:center;justify-content:center"><span class="sp"></span></div>`}</div>
-        <div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:11px 13px;font-size:12.5px;font-weight:600;line-height:1.7">Số tiền: <b style="font-family:'Space Grotesk';font-size:15px">${fmt(o.amount)}đ</b> · Nội dung: <b>${esc(o.description||'')}</b><br><span style="color:#5C6B7A">${esc(o.account_name||'')}${o.account_number?' · '+esc(o.account_number):''}</span></div>
+        <div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:11px 13px;font-size:12.5px;font-weight:600;line-height:1.7">Số tiền: <b style="font-family:'Space Grotesk';font-size:15px">${fmt(o.amount)}đ</b> · Nội dung: <b>${esc(o.description||'')}</b><br><span style="color:#5C6B7A">${esc(o.account_name||'')}${o.account_number?' · '+esc(o.account_number):''}</span>${o.provider==='sepay'?`<br><span style="color:#B25E09">Chuyển khoản tay thì ghi <b>đúng nguyên văn</b> nội dung trên — sai nội dung là Premium không tự mở.</span>`:''}</div>
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;font-size:13px;font-weight:700;color:#0A6E5D"><span class="sp"></span> Đang chờ thanh toán… <span id="payleft" style="font-family:'Space Grotesk';color:#5C6B7A">${fmtLeft(UI.pay.left||0)}</span></div>
         ${o.checkout_url?`<a href="${esc(o.checkout_url)}" target="_blank" rel="noopener" style="display:block;text-align:center;${BTN2}">Mở trang thanh toán PayOS</a>`:''}
         <button onclick="recheckPay()" style="${BTN2}">Đã chuyển mà chưa thấy kích hoạt?</button>

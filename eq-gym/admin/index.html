@@ -94,7 +94,7 @@ async function loadAll(){
     const {data}=await sb.from('payments').select('*').eq('status','pending').order('created_at',{ascending:true});
     let pend=data||[];
     // Đơn QR PayOS bỏ dở quá hạn → đóng luôn cho khỏi treo ở "Chờ duyệt" (webhook không bao giờ tới nữa)
-    const stale=pend.filter(p=>p.provider==='payos'&&p.expires_at&&new Date(p.expires_at).getTime()<Date.now()-5*60000);
+    const stale=pend.filter(p=>(p.provider==='payos'||p.provider==='sepay')&&p.expires_at&&new Date(p.expires_at).getTime()<Date.now()-5*60000);
     if(stale.length){ await Promise.all(stale.map(p=>sb.rpc('admin_set_payment_status',{p_id:p.id,p_status:'expired'}).catch(()=>{}))); pend=pend.filter(p=>!stale.includes(p)); }
     const ids=[...new Set(pend.map(p=>p.user_id).filter(Boolean))]; let emails={};
     if(ids.length){ try{ const {data:profs}=await sb.from('profiles').select('id,email').in('id',ids); (profs||[]).forEach(p=>emails[p.id]=p.email); }catch(e){} }
@@ -377,16 +377,16 @@ function viewPending(){
   list=paginate(list,UI.pendingPage,PAGE_SIZE);
   if(!total) h+=`<p style="color:#5C6B7A;font-weight:600;text-align:center;padding:20px 0">Không tìm thấy kết quả.</p>`;
   list.forEach(p=>{
-    const payos=p.provider==='payos';
+    const payos=p.provider==='payos', sepay=p.provider==='sepay';
     const codeLabel=p.ref_code?pill('Giới thiệu '+esc(p.ref_code)+' · -'+fmt(p.discount_amount||0)+'đ','good'):p.voucher_code?pill(esc(p.voucher_code)+' · -'+fmt(p.discount_amount||0)+'đ','good'):'';
-    h+=card(`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h4 style="margin:0 0 6px;font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">💳 ${esc(p.email)}</h4>${pill(payos?'QR PayOS':'CK tay',payos?'good':'off')}</div>
+    h+=card(`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h4 style="margin:0 0 6px;font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">💳 ${esc(p.email)}</h4>${pill(payos?'QR PayOS':sepay?'QR SePay':'CK tay',(payos||sepay)?'good':'off')}</div>
       <div style="font-size:11px;color:#5C6B7A;font-weight:700">Mã CK: ${esc(p.code||'—')} · ${new Date(p.created_at).toLocaleString('vi-VN')}${payos&&p.expires_at?` · QR hết hạn ${new Date(p.expires_at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`:''}</div>
       <p style="margin:6px 0;font-size:13.5px">Số tiền: <b>${fmt(p.amount||0)}đ</b></p>
       ${codeLabel?`<div style="margin-bottom:8px">${codeLabel}</div>`:''}
       ${payos?`<p style="margin:0 0 8px;font-size:11.5px;color:#5C6B7A;font-weight:600;line-height:1.5">Đơn QR tự động — tiền về là tự kích hoạt. Chỉ bấm "Đối soát" nếu học viên báo đã chuyển mà chưa được mở.</p>
       <button onclick="recheckOrder('${p.id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:#0F1923;color:#fff;min-height:44px">Đối soát với PayOS</button>
       <button onclick="closeOrder('${p.id}')" style="width:100%;margin-top:8px;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:42px">Đóng đơn</button>`
-      :`<button onclick="approvePay('${p.id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:44px">Duyệt · ${p.months>0?'+'+p.months+' tháng Premium':'Premium trọn đời'}</button>
+      :`${sepay?`<p style="margin:0 0 8px;font-size:11.5px;color:#5C6B7A;font-weight:600;line-height:1.5">Đơn QR SePay — tiền về là tự kích hoạt. Chỉ duyệt tay khi đã thấy tiền trong sao kê mà app chưa mở.</p>`:''}<button onclick="approvePay('${p.id}')" style="width:100%;border:none;border-radius:12px;padding:12px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:44px">Duyệt · ${p.months>0?'+'+p.months+' tháng Premium':'Premium trọn đời'}</button>
       <button onclick="rejectPay('${p.id}')" style="width:100%;margin-top:8px;border:1px solid #E3E8EE;border-radius:12px;padding:11px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:42px">Từ chối</button>`}`);
   });
   h+=pager(UI.pendingPage,total,PAGE_SIZE,'pendingPageGo(-1)','pendingPageGo(1)');
@@ -401,7 +401,7 @@ function viewHistoryList(){
   if(DATA.history==null) return h+`<p style="color:#5C6B7A;font-weight:600">Đang tải...</p>`;
   if(!DATA.history.length) return h+`<p style="color:#5C6B7A;font-weight:600;text-align:center;padding:20px 0">Chưa có giao dịch nào.</p>`;
   DATA.history.forEach(p=>{
-    const sp=p.status==='approved'?pill(p.provider==='payos'?'Đã TT · PayOS':'Đã duyệt tay','good'):p.status==='rejected'?pill('Từ chối','warn'):p.status==='pending'?pill('Chờ duyệt','off'):pill(p.status==='cancelled'?'Đã huỷ':'Hết hạn','off');
+    const sp=p.status==='approved'?pill(p.provider==='payos'?'Đã TT · PayOS':p.provider==='sepay'?(p.approved_by?'Duyệt tay · SePay':'Đã TT · SePay'):'Đã duyệt tay','good'):p.status==='rejected'?pill('Từ chối','warn'):p.status==='pending'?pill('Chờ duyệt','off'):pill(p.status==='cancelled'?'Đã huỷ':'Hết hạn','off');
     h+=card(`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><h4 style="margin:0;font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.user_email||p.user_id)}</h4>${sp}</div>
       <div style="font-size:11px;color:#5C6B7A;font-weight:700">Mã CK: ${esc(p.code||'—')} · ${new Date(p.created_at).toLocaleString('vi-VN')}</div>
       <p style="margin:6px 0 0;font-size:13.5px">Số tiền: <b>${fmt(p.amount||0)}đ</b>${p.voucher_code?` · ${pill(esc(p.voucher_code),'good')}`:''}${p.ref_code?` · ${pill('GT '+esc(p.ref_code),'good')}`:''}</p>

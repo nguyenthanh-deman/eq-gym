@@ -5,8 +5,10 @@
 //   supabase secrets set PAYOS_CLIENT_ID=... PAYOS_API_KEY=... PAYOS_CHECKSUM_KEY=...
 //   (tuỳ chọn) PAYOS_RETURN_URL=https://app.evolve.vn/eq-gym/
 //
-// Chưa có key → trả 503 payos_not_configured, app tự rơi về chuyển khoản tay.
-// Tiền tính ở DB (payos_prepare_order) — client không gửi số tiền lên.
+// SePay (webhook biến động số dư — xem functions/sepay-webhook): nạp SEPAY_ACCOUNT_NO, SEPAY_BANK_BIN,
+//   SEPAY_ACCOUNT_NAME thì đơn mới đi qua SePay (ưu tiên hơn PayOS); PAY_PROVIDER=payos|sepay để ép chọn.
+// Không cổng nào được cấu hình → trả 503 payos_not_configured, app tự rơi về chuyển khoản tay.
+// Tiền tính ở DB (pay_prepare_order) — client không gửi số tiền lên.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -17,7 +19,16 @@ const API_KEY = Deno.env.get("PAYOS_API_KEY") || "";
 const CHECKSUM = Deno.env.get("PAYOS_CHECKSUM_KEY") || "";
 const RETURN_URL = (Deno.env.get("PAYOS_RETURN_URL") || "https://app.evolve.vn/eq-gym/").replace(/\?.*$/, "");
 const API = "https://api-merchant.payos.vn";
-const CONFIGURED = !!(CLIENT_ID && API_KEY && CHECKSUM);
+const PAYOS_READY = !!(CLIENT_ID && API_KEY && CHECKSUM);
+const SEPAY_ACC = (Deno.env.get("SEPAY_ACCOUNT_NO") || "").trim();
+const SEPAY_BIN = (Deno.env.get("SEPAY_BANK_BIN") || "").trim();      // vd 970422 MB, 970415 VietinBank, 970436 VCB
+const SEPAY_NAME = (Deno.env.get("SEPAY_ACCOUNT_NAME") || "").trim();
+const SEPAY_READY = !!(SEPAY_ACC && SEPAY_BIN);
+const FORCED = (Deno.env.get("PAY_PROVIDER") || "").toLowerCase();
+const PROVIDER = FORCED === "payos" && PAYOS_READY ? "payos" : FORCED === "sepay" && SEPAY_READY ? "sepay"
+  : SEPAY_READY ? "sepay" : PAYOS_READY ? "payos" : "";
+const CONFIGURED = !!PROVIDER;
+const VIETINBANK_BIN = "970415";   // VietinBank bắt buộc nội dung bắt đầu bằng SEVQR thì SePay mới nhận ra giao dịch
 const EXPIRE_MIN = 30;
 
 const cors = {
@@ -41,15 +52,28 @@ Deno.serve(async (req) => {
 
     if (action === "create") {
       if (!CONFIGURED) return json({ error: "payos_not_configured" }, 503);
-      const { data, error } = await sb.rpc("payos_prepare_order", { p_user: user.id, p_code: String(body.code || "") });
+      const { data, error } = await sb.rpc("pay_prepare_order", { p_user: user.id, p_code: String(body.code || ""), p_provider: PROVIDER });
       const o = data?.[0];
       if (error || !o) return json({ error: "prepare_failed", message: error?.message }, 500);
       if (o.message !== "OK") return json({ error: "code_rejected", message: o.message }, 400);
 
       // Giảm giá phủ hết tiền → kích hoạt luôn, không qua cổng
       if (o.amount <= 0) {
-        const r = await sb.rpc("payos_confirm", { p_order_code: o.order_code, p_amount: 0, p_ref: "FREE", p_raw: null });
+        const r = PROVIDER === "sepay"
+          ? await sb.rpc("sepay_confirm", { p_code: o.pay_code, p_amount: 0, p_ref: "FREE-" + o.payment_id, p_raw: null })
+          : await sb.rpc("payos_confirm", { p_order_code: o.order_code, p_amount: 0, p_ref: "FREE", p_raw: null });
         return json({ free: true, payment_id: o.payment_id, result: r.data, error: r.error?.message });
+      }
+
+      if (PROVIDER === "sepay") {
+        // App tự dựng VietQR (không có qr_code EMV) tới tài khoản nhận tiền; SePay báo về qua sepay-webhook.
+        const description = (SEPAY_BIN === VIETINBANK_BIN ? "SEVQR " : "") + o.pay_code;
+        const expiresAt = new Date(Date.now() + EXPIRE_MIN * 60 * 1000).toISOString();
+        return json({
+          provider: "sepay", payment_id: o.payment_id, order_code: o.order_code, amount: o.amount, discount: o.discount, months: o.months,
+          checkout_url: null, qr_code: null, bin: SEPAY_BIN, account_number: SEPAY_ACC, account_name: SEPAY_NAME,
+          description, expires_at: expiresAt, server_now: new Date().toISOString(),
+        });
       }
 
       const description = "EQG" + String(o.order_code).slice(-6); // ≤ 9 ký tự (giới hạn PayOS với ngân hàng chưa liên kết)
@@ -76,19 +100,21 @@ Deno.serve(async (req) => {
       return json({
         payment_id: o.payment_id, order_code: o.order_code, amount: o.amount, discount: o.discount, months: o.months,
         checkout_url: d.checkoutUrl, qr_code: d.qrCode, bin: d.bin, account_number: d.accountNumber, account_name: d.accountName,
-        description: d.description, expires_at: new Date(expiredAt * 1000).toISOString(), server_now: new Date().toISOString(),
+        provider: "payos", description: d.description, expires_at: new Date(expiredAt * 1000).toISOString(), server_now: new Date().toISOString(),
       });
     }
 
     if (action === "recheck") {
-      if (!CONFIGURED) return json({ error: "payos_not_configured" }, 503);
-      const { data: p } = await sb.from("payments").select("id,user_id,order_code,status,amount").eq("id", body.payment_id).maybeSingle();
+      const { data: p } = await sb.from("payments").select("id,user_id,order_code,status,amount,provider").eq("id", body.payment_id).maybeSingle();
       if (!p || !p.order_code) return json({ error: "not_found" }, 404);
       if (p.user_id !== user.id) {
         const { data: prof } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
         if (prof?.role !== "admin" && prof?.role !== "super_admin") return json({ error: "forbidden" }, 403);
       }
       if (p.status === "approved") return json({ status: "PAID", result: "already" });
+      // SePay tự báo về khi tiền vào (kể cả chuyển trễ sau khi mã hết hạn) → chỉ cần đọc trạng thái
+      if (p.provider === "sepay") return json({ status: "PENDING" });
+      if (!PAYOS_READY) return json({ error: "payos_not_configured" }, 503);
       const r = await fetch(API + "/v2/payment-requests/" + p.order_code, { headers: { "x-client-id": CLIENT_ID, "x-api-key": API_KEY } });
       const pr = await r.json().catch(() => ({}));
       const d = pr?.data;
