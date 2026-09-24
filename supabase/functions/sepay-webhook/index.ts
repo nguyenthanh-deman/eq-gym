@@ -17,23 +17,42 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WEBHOOK_KEY = Deno.env.get("SEPAY_WEBHOOK_KEY") || "";
 
+const sb = createClient(SUPABASE_URL, SERVICE_KEY);
+
+// Ghi nhật ký mọi lần gọi (không lưu API key) — admin xem trong bảng webhook_logs
+async function log(status: number, result: string, d: any, code: string | null) {
+  try {
+    await sb.from("webhook_logs").insert({
+      source: "sepay", status, result, code,
+      amount: d?.transferAmount != null ? Number(d.transferAmount) || 0 : null,
+      transfer_type: d?.transferType ?? null,
+      ref: d?.id != null ? String(d.id) : (d?.referenceCode ?? null),
+      content: d?.content != null ? String(d.content).slice(0, 300) : null,
+    });
+  } catch (e) { console.error("webhook_logs", String(e)); }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "GET") return json({ success: true, service: "sepay-webhook", configured: !!WEBHOOK_KEY });
   if (req.method !== "POST") return json({ success: false, error: "method_not_allowed" }, 405);
-  if (!WEBHOOK_KEY) return json({ success: false, error: "not_configured" }, 503);
+  if (!WEBHOOK_KEY) { await log(503, "not_configured", null, null); return json({ success: false, error: "not_configured" }, 503); }
+
+  let d: any = null;
+  try { d = await req.json(); } catch { /* bỏ qua */ }
 
   const auth = (req.headers.get("Authorization") || "").trim();
   const given = auth.replace(/^apikey\s+/i, "").replace(/^bearer\s+/i, "");
-  if (!safeEqual(given, WEBHOOK_KEY)) return json({ success: false, error: "unauthorized" }, 401);
+  if (!safeEqual(given, WEBHOOK_KEY)) {
+    await log(401, auth ? "unauthorized:sai_key" : "unauthorized:khong_co_key", d, null);
+    return json({ success: false, error: "unauthorized" }, 401);
+  }
 
-  let d: any;
-  try { d = await req.json(); } catch { return json({ success: true, ignored: "no_body" }); }
-  if (!d || d.transferType !== "in") return json({ success: true, ignored: "not_incoming" });
+  if (!d) { await log(200, "ignored:no_body", null, null); return json({ success: true, ignored: "no_body" }); }
+  if (d.transferType !== "in") { await log(200, "ignored:not_incoming", d, null); return json({ success: true, ignored: "not_incoming" }); }
 
   const code = extractCode(d.code, d.content, d.description);
-  if (!code) return json({ success: true, ignored: "no_eqg_code" }); // tiền vào không phải của app (vd chuyển khoản khác)
+  if (!code) { await log(200, "ignored:no_eqg_code", d, null); return json({ success: true, ignored: "no_eqg_code" }); } // tiền vào không phải của app
 
-  const sb = createClient(SUPABASE_URL, SERVICE_KEY);
   const { data: result, error } = await sb.rpc("sepay_confirm", {
     p_code: code,
     p_amount: Number(d.transferAmount) || 0,
@@ -42,8 +61,10 @@ Deno.serve(async (req) => {
   });
   if (error) {
     console.error("sepay_confirm", error.message);
+    await log(500, "db_error", d, code);
     return json({ success: false, error: "db_error" }, 500); // để SePay gửi lại sau
   }
+  await log(200, String(result), d, code);
   return json({ success: true, result, code });
 });
 
