@@ -20,6 +20,7 @@ Google Sign-In · SePay/VietinBank · GitHub Actions (backup DB mã hoá hằng 
 
 ## 🔧 Anh làm trên Supabase Dashboard (5 phút)
 
+- [ ] **Bật SMTP riêng** (Authentication → Emails → SMTP Settings) — Supabase chỉ cho sửa mẫu email khi dùng SMTP riêng; SMTP mặc định còn giới hạn rất ít email/giờ. Đề xuất: Resend với tên miền evolve.vn (bền, ít vào Spam) hoặc Gmail + App Password (nhanh, ~500 email/ngày). Sau đó chỉnh *Rate Limits → emails/giờ* cho phù hợp.
 - [ ] **Authentication → Email Templates → Magic Link** và **Confirm signup**: thêm mã số vào nội dung, ví dụ:
   `<p>Mã đăng nhập EQ GYM của bạn: <b style="font-size:22px;letter-spacing:4px">{{ .Token }}</b></p>`
   (giữ nguyên link `{{ .ConfirmationURL }}` bên dưới làm dự phòng). Chưa thêm thì email chỉ có link, app vẫn chạy như cũ.
@@ -65,7 +66,7 @@ Google Sign-In · SePay/VietinBank · GitHub Actions (backup DB mã hoá hằng 
 1. Kết quả Test EQ (24 câu về cảm xúc) và câu trả lời phản chiếu cảm xúc của học viên có bị coi là **dữ liệu cá nhân nhạy cảm** (dữ liệu sức khoẻ/tinh thần) theo Luật BVDLCN 91/2025/QH15 và NĐ 356/2025/NĐ-CP không?
 2. App có thuộc diện **được miễn** lập hồ sơ đánh giá tác động / cử người phụ trách bảo vệ dữ liệu (doanh nghiệp nhỏ, khởi nghiệp) không, khi có thể đang xử lý dữ liệu nhạy cảm?
 3. App chạy thật từ khoảng **15/09/2026**. Nếu hồ sơ đánh giá tác động xử lý + chuyển dữ liệu ra nước ngoài phải nộp trong 60 ngày thì **hạn là ngày nào**, dùng mẫu nào, nộp ở đâu? Ai đứng tên bên kiểm soát dữ liệu (chủ app) và bên xử lý (đơn vị làm kỹ thuật)?
-4. Những dịch vụ nào tính là **chuyển dữ liệu ra nước ngoài**: Supabase (Singapore), Google Gemini (Mỹ), Google Sign-In, GitHub (lưu backup mã hoá)? Cần ký hợp đồng/thoả thuận xử lý dữ liệu (DPA) gì với từng bên?
+4. Những dịch vụ nào tính là **chuyển dữ liệu ra nước ngoài**: Supabase (Singapore), Google Gemini (Mỹ), Google Sign-In, GitHub (lưu backup mã hoá), nhà cung cấp gửi email SMTP (Resend/Gmail — nhận email học viên)? Cần ký hợp đồng/thoả thuận xử lý dữ liệu (DPA) gì với từng bên?
 5. **Độ tuổi tối thiểu** để tự đồng ý? Dưới tuổi đó lấy đồng ý của cha mẹ bằng cách nào là hợp lệ? Ô "Tôi đủ X tuổi" có đủ không?
 6. Hình thức **đồng ý** hợp lệ: ô tick không tick sẵn có đủ không? Có phải lưu bằng chứng (thời điểm, phiên bản chính sách, IP) không? Đồng ý cho dữ liệu nhạy cảm có phải tách riêng khỏi đồng ý điều khoản không?
 7. **Thời hạn phản hồi** yêu cầu của học viên (xem, sửa, xoá, rút đồng ý) là bao nhiêu? Khi có **sự cố dữ liệu** phải báo ai (cơ quan nào, kênh nào), trong bao lâu (72 giờ?), nội dung tối thiểu gồm gì?
@@ -86,4 +87,5 @@ Google Sign-In · SePay/VietinBank · GitHub Actions (backup DB mã hoá hằng 
 6. Nhóm Zalo có mở cho **mọi người** (kể cả chưa Premium) để hỗ trợ đăng nhập không? Hiện em đặt link "Nhắn nhóm hỗ trợ Zalo" ở màn đăng nhập cho tất cả.
 7. Trang `dangky/` cũ (chuyển khoản tay, nhóm Facebook) còn dùng không → gỡ hay cập nhật?
 8. Những ai là **admin**? (Để bật xác thực 2 lớp cho từng người.)
+10. Email đăng nhập gửi từ địa chỉ nào (vd `noreply@evolve.vn`)? Ai quản lý DNS tên miền evolve.vn để xác minh cho dịch vụ gửi mail?
 9. Ngoài 115, có **đường dây hỗ trợ tâm lý / chuyên gia đối tác** nào muốn giới thiệu cho học viên khi cần không?
