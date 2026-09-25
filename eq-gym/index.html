@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="EQ GYM">
-<meta name="description" content="EQ GYM — Phòng tập cảm xúc 30 ngày. Luyện EQ mỗi ngày với Coach AI.">
+<meta name="description" content="EQ GYM — Phòng tập cảm xúc 30 ngày. Luyện EQ mỗi ngày qua 30 buổi tập.">
 <title>EQ GYM · Phòng tập cảm xúc</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -94,8 +94,13 @@ async function api(payload,tries){
   }
   throw lastErr;
 }
-function aiReady(){ return !!(BACKEND && AUTH && isPremium()); }
+/* 🤖 CÔNG TẮC AI — false = tắt toàn bộ tính năng AI (Coach chat, AI tạo tình huống, AI chấm bài).
+   Tạm tắt từ 25/09/2026 chờ rà soát an toàn thông tin & pháp lý (docs/PRIVACY-COMPLIANCE-CHECKLIST.md).
+   Server cũng khoá riêng qua settings.ai_enabled — bật lại phải bật CẢ HAI. */
+const AI_ENABLED=false;
+function aiReady(){ return !!(AI_ENABLED && BACKEND && AUTH && isPremium()); }
 async function geminiFetch(body){
+  if(!AI_ENABLED) throw new Error('ai_disabled');
   if(!(BACKEND && AUTH && isPremium())) throw new Error('premium_required');
   const {data,error}=await sb.functions.invoke('ai',{body});
   if(error) throw error;
@@ -265,7 +270,7 @@ function viewAdminCode(){
 }
 
 /* ===== Thanh toán / cộng đồng (Premium) ===== */
-const COMMUNITY_URL="https://zaloapp.com/qr/g/9cisw0ktwt4zowguavqb?src=qr";
+const COMMUNITY_URL="https://zalo.me/g/9cisw0ktwt4zowguavqb";
 const PREMIUM_PRICE=499000;
 
 /* ================================================================
@@ -500,7 +505,7 @@ function videoFor(n){
   if(v.mp4 && UI.mp4Ok!==false) return {type:'mp4',src:v.mp4};
   return {type:'none'};
 }
-function nav(v){ sfx('tap'); if(v==='chat'&&BACKEND&&!isPremium()){ UI.premOpen=true; render(); return; } UI.view=v; if(v==='quiz') render(); else render(); if(v!=='chat') window.scrollTo(0,0); else scrollChatDown(); }
+function nav(v){ sfx('tap'); if(v==='chat'&&!AI_ENABLED){ v='home'; toast('Coach AI đang tạm dừng để nâng cấp an toàn. Sẽ mở lại sớm!'); } if(v==='chat'&&BACKEND&&!isPremium()){ UI.premOpen=true; render(); return; } UI.view=v; if(v==='quiz') render(); else render(); if(v!=='chat') window.scrollTo(0,0); else scrollChatDown(); }
 
 /* ===== 🔥 CHUỖI NGÀY + NGÀY NGHỈ PHÉP (streak + freeze) ===== */
 function dayStr(off){ return new Date(Date.now()+(off||0)*86400000).toDateString(); }
@@ -742,15 +747,17 @@ function submitQuiz(){ const n=QUIZ.filter(q=>S.qans[q.id]).length; if(n<QUIZ.le
 function retakeQuiz(){ S.qans={}; S.quiz=null; save(); render(); window.scrollTo(0,0); }
 function bandSummary(t){ return t>=80?'Bạn có nền tảng EQ rất mạnh. Hành trình EQ GYM giúp bạn giữ phong độ và lan tỏa cho người khác.':t>=60?'Nền EQ của bạn tốt. Luyện đều mỗi ngày để biến nó thành phản xạ tự nhiên.':t>=40?'Bạn đã có ý thức cảm xúc. 30 buổi luyện tập sẽ nâng cơ bắp cảm xúc lên rõ rệt.':'Đây là điểm khởi đầu tuyệt vời — ai cũng bắt đầu từ buổi tập đầu tiên. EQ GYM sinh ra cho bạn.'; }
 function strengthTip(k){ return {aware:'bạn hiểu rõ thế giới nội tâm của mình.',real:'bạn sống thật và dám đối diện cảm xúc.',choice:'bạn làm chủ phản ứng tốt dưới áp lực.',empath:'bạn kết nối và thấu cảm người khác tốt.'}[k]||''; }
+/* Lưu ý "không thay thế chuyên gia" — theo tài liệu an toàn thông tin (Marota, 24/09/2026), hiện ở đăng ký & bài test cảm xúc */
+function careNoteHtml(mt){ return `<p style="margin:${mt==null?12:mt}px 2px 0;font-size:11px;color:#8A97A5;line-height:1.55;font-weight:600">EQ GYM là chương trình rèn luyện kỹ năng cảm xúc, không phải dịch vụ y tế hay trị liệu và không chẩn đoán. Nếu bạn đang gặp khó khăn nghiêm trọng, hãy tìm tới người thân hoặc chuyên gia; nguy hiểm khẩn cấp hãy gọi <b>115</b>.</p>`; }
 function viewQuiz(){
   let h=`<div style="animation:fade .25s ease;padding:calc(env(safe-area-inset-top) + 20px) 16px 10px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">${ring(34,'#0FB89B')}<div><h1 style="margin:0;font-family:'Space Grotesk';font-size:19px;font-weight:700">Trắc nghiệm <span style="color:#0FB89B">EQ</span></h1><p style="margin:1px 0 0;color:#5C6B7A;font-size:12px;font-weight:600">Đo chỉ số cảm xúc theo 4 trụ cột EQ GYM</p></div></div>`;
-  if(S.quiz){ h+=quizResultHtml(S.quiz)+`</div>`; return h; }
+  if(S.quiz){ h+=quizResultHtml(S.quiz)+careNoteHtml()+`</div>`; return h; }
   h+=`<div style="background:#fff;border:1px solid #E3E8EE;border-radius:18px;padding:16px 15px;margin-bottom:12px"><h3 style="margin:0 0 6px;font-family:'Space Grotesk';font-size:16px;font-weight:700">Đo chỉ số EQ của bạn</h3><p style="margin:5px 0;color:#5C6B7A;font-size:13px;line-height:1.6;font-weight:600">24 câu ngắn, thang 5 mức (1 = không đúng với tôi → 5 = rất đúng). Trả lời thật lòng, mất khoảng 3–4 phút.</p></div>`;
   const answered=QUIZ.filter(q=>S.qans[q.id]).length;
   h+=`<div style="position:sticky;top:0;z-index:20;background:rgba(245,248,250,.95);backdrop-filter:blur(8px);padding:8px 0 10px"><div style="height:8px;border-radius:6px;background:#E3E8EE;overflow:hidden"><div style="height:100%;width:${Math.round(answered/QUIZ.length*100)}%;background:linear-gradient(90deg,#0FB89B,#4A9EFF);transition:width .3s;border-radius:6px"></div></div><div style="font-size:11.5px;color:#5C6B7A;margin-top:5px;text-align:center;font-weight:700">${answered}/${QUIZ.length} câu</div></div>`;
   QUIZ.forEach((q,i)=>{ const cur=S.qans[q.id]; h+=`<div id="qi-${q.id}" style="background:#fff;border:1px solid ${cur?'#B6EDDF':'#E3E8EE'};border-radius:14px;padding:13px 14px;margin-bottom:11px"><div style="font-size:14.5px;line-height:1.5;margin-bottom:10px"><b style="color:#0A6E5D;font-family:'Space Grotesk';margin-right:5px">${i+1}.</b>${esc(q.text)}</div><div style="display:flex;gap:6px">`+[1,2,3,4,5].map(v=>`<button onclick="ansQuiz('${q.id}',${v})" style="flex:1;border:1px solid ${cur==v?'transparent':'#E3E8EE'};background:${cur==v?'linear-gradient(135deg,#0FB89B,#2bb3d6)':'#F5F8FA'};color:${cur==v?'#052018':'#5C6B7A'};border-radius:10px;padding:10px 0;font-size:15px;font-weight:800;cursor:pointer">${v}</button>`).join('')+`</div><div style="display:flex;justify-content:space-between;font-size:9.5px;color:#8A97A5;margin-top:5px"><span>Không đúng</span><span>Rất đúng</span></div></div>`; });
-  h+=`<button onclick="submitQuiz()" style="width:100%;margin-top:6px;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:52px">Xem kết quả EQ của tôi ›</button></div>`;
+  h+=`<button onclick="submitQuiz()" style="width:100%;margin-top:6px;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:52px">Xem kết quả EQ của tôi ›</button>${careNoteHtml()}</div>`;
   return h;
 }
 function quizResultHtml(q){
@@ -782,19 +789,63 @@ function acctHtml(){
       <button onclick="signOut()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#5C6B7A;min-height:46px">Đăng xuất</button></div>`;
   }
   return `<div style="margin-bottom:14px"><div style="background:#F5F8FA;border:1px solid #E3E8EE;border-radius:12px;padding:12px 14px;font-size:12.5px;color:#5C6B7A;line-height:1.6;font-weight:600">Đăng nhập để lưu tiến trình & nhận báo cáo EQ trên mọi thiết bị.</div>
-    <input type="email" id="authemail" placeholder="Email của bạn" style="width:100%;margin-top:12px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;color:#0F1923;padding:14px;font-size:14px">
-    <button onclick="signInEmail()" style="width:100%;margin-top:10px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px">Gửi liên kết đăng nhập ✉️</button>
-    <button onclick="signInGoogle()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px">Đăng nhập với Google</button>
-    <p id="authmsg" style="font-size:11.5px;color:#5C6B7A;margin:8px 0 0;font-weight:600"></p></div>`;
+    ${authFormHtml()}${careNoteHtml()}</div>`;
 }
+/* Đăng nhập email bằng MÃ SỐ (OTP) thay vì chỉ bấm link: link chỉ dùng 1 lần nên hay bị "hết hạn"
+   (bộ quét email/Zalo mở trước, bấm email cũ, mở ở trình duyệt khác với nơi xin link — PKCE).
+   Mẫu email Supabase (Magic Link + Confirm signup) phải có {{ .Token }}; link trong email vẫn dùng được. */
+const IN_APP_BROWSER=/Zalo|FBAN|FBAV|FB_IAB|Instagram|Line\/|; wv\)/i.test(navigator.userAgent||'');
+function authFormHtml(){
+  const o=UI.otp||{}; const inp='width:100%;margin-top:12px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;color:#0F1923;padding:14px;font-size:16px;box-sizing:border-box';
+  const b1='width:100%;margin-top:10px;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:48px';
+  const lnk='background:none;border:none;color:#0A6E5D;font-size:12.5px;font-weight:800;cursor:pointer;padding:8px 4px;text-decoration:underline';
+  let h='';
+  if(o.sentTo){
+    h+=`<div style="margin-top:12px;background:#E9FBF6;border:1px solid #B6EDDF;border-radius:12px;padding:11px 13px;font-size:12.5px;color:#0A6E5D;line-height:1.6;font-weight:700">✅ Đã gửi mã đăng nhập tới <b>${esc(o.sentTo)}</b>. Mở email, nhập <b>mã số</b> vào ô dưới đây — hoặc bấm link trong email trên <b>chính trình duyệt này</b>. (Không thấy email? Xem cả mục Spam/Quảng cáo.)</div>
+    <input id="authcode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Nhập mã trong email" onkeydown="if(event.key==='Enter')verifyEmailCode()" style="${inp};letter-spacing:4px;text-align:center;font-weight:800">
+    <button onclick="verifyEmailCode()" ${o.busy?'disabled':''} style="${b1};opacity:${o.busy?.6:1}">${o.busy?'Đang kiểm tra...':'Xác nhận & đăng nhập'}</button>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:2px"><button onclick="resendEmailCode()" style="${lnk}">Gửi lại mã</button><button onclick="UI.otp=null;render()" style="${lnk};color:#5C6B7A">Đổi email</button></div>`;
+  } else {
+    h+=`<input type="email" id="authemail" placeholder="Email của bạn" autocomplete="email" onkeydown="if(event.key==='Enter')signInEmail()" value="${esc(o.email||'')}" style="${inp}">
+    <button onclick="signInEmail()" ${o.busy?'disabled':''} style="${b1};opacity:${o.busy?.6:1}">${o.busy?'Đang gửi...':'Gửi mã đăng nhập ✉️'}</button>`;
+  }
+  if(o.err) h+=`<p style="font-size:12px;color:#C0392B;margin:8px 0 0;font-weight:700;line-height:1.55">${esc(o.err)}</p>`;
+  if(IN_APP_BROWSER) h+=`<div style="margin-top:12px;background:#FFF7E6;border:1px solid #F5D9A8;border-radius:12px;padding:11px 13px;font-size:12px;color:#7A5200;line-height:1.6;font-weight:600">Bạn đang mở app trong Zalo/Facebook — Google <b>không cho</b> đăng nhập ở đây. Hãy dùng <b>mã qua email</b> ở trên, hoặc bấm <b>⋯ → Mở bằng trình duyệt</b> rồi đăng nhập Google.<button onclick="copyAppLink()" style="display:block;margin-top:8px;border:1px solid #F5D9A8;background:#fff;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;color:#7A5200;cursor:pointer">📋 Sao chép link app</button></div>`;
+  else h+=`<button onclick="signInGoogle()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:46px">Đăng nhập với Google</button>`;
+  if(COMMUNITY_URL) h+=`<p style="font-size:11.5px;color:#5C6B7A;margin:10px 0 0;font-weight:600;text-align:center">Gặp lỗi đăng nhập? <a href="${COMMUNITY_URL}" target="_blank" rel="noopener" style="color:#0A6E5D;font-weight:800">Nhắn nhóm hỗ trợ Zalo</a></p>`;
+  return h;
+}
+function authErrVi(e){
+  const m=String((e&&(e.code||e.message))||e||'');
+  if(/rate|security purposes|seconds|too many/i.test(m)) return 'Bạn vừa yêu cầu mã. Đợi khoảng 1 phút rồi bấm gửi lại nhé.';
+  if(/verifier|flow state|pkce/i.test(m)) return 'Link được mở ở trình duyệt khác với nơi bạn yêu cầu. Hãy nhập mã số trong email vào app để đăng nhập.';
+  if(/expired|invalid|otp|token/i.test(m)) return 'Mã hoặc link đã hết hạn / đã được dùng. Chỉ mã MỚI NHẤT dùng được — bấm "Gửi lại mã" (hoặc nhập lại email) để nhận mã mới.';
+  if(/fetch|network/i.test(m)) return 'Mất kết nối mạng. Kiểm tra mạng rồi thử lại.';
+  return 'Không đăng nhập được: '+m;
+}
+function copyAppLink(){ const u=location.origin+location.pathname; try{ navigator.clipboard.writeText(u).then(()=>toast('Đã sao chép link — dán vào Chrome/Safari để mở')).catch(()=>prompt('Sao chép link này:',u)); }catch(e){ prompt('Sao chép link này:',u); } }
 function openAuth(){ openSettings(); }
-async function signInEmail(){ const email=val('authemail'); if(!email||!/.+@.+\..+/.test(email)){ toast('Nhập email hợp lệ'); return; } const msg=document.getElementById('authmsg'); try{ const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split('#')[0]}}); if(error) throw error; if(msg) msg.innerHTML='✅ Đã gửi liên kết đăng nhập tới email của bạn. Mở email và bấm vào link để vào.'; }catch(e){ if(msg) msg.textContent='Lỗi: '+e.message; } }
+async function signInEmail(){ const email=val('authemail').toLowerCase(); UI.otp={email}; if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ UI.otp.err='Nhập email hợp lệ'; render(); return; } await sendEmailCode(email); }
+async function sendEmailCode(email){
+  UI.otp=Object.assign(UI.otp||{},{email,busy:true,err:''}); render();
+  try{ const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split('#')[0]}}); if(error) throw error; UI.otp={email,sentTo:email,at:Date.now()}; }
+  catch(e){ console.warn('otp send',e); UI.otp=Object.assign(UI.otp||{},{busy:false,err:authErrVi(e)}); }
+  render(); setTimeout(()=>{ const c=document.getElementById('authcode'); if(c) c.focus(); },50);
+}
+function resendEmailCode(){ const o=UI.otp||{}; if(o.at&&Date.now()-o.at<60000){ o.err='Đợi '+Math.ceil((60000-(Date.now()-o.at))/1000)+' giây nữa rồi gửi lại nhé.'; render(); return; } sendEmailCode(o.sentTo||o.email); }
+async function verifyEmailCode(){
+  const o=UI.otp||{}; const token=val('authcode').replace(/\D/g,''); if(token.length<6){ o.err='Nhập đủ mã số trong email.'; render(); return; }
+  o.busy=true; o.err=''; render();
+  try{ const {data,error}=await sb.auth.verifyOtp({email:o.sentTo,token,type:'email'}); if(error) throw error; UI.otp=null; await applySession(data.session); toast('Đăng nhập thành công 🎉'); }
+  catch(e){ console.warn('otp verify',e); o.busy=false; o.err=authErrVi(e); render(); }
+}
 let _oauthBusy=false;
 async function signInGoogle(){ if(_oauthBusy) return; _oauthBusy=true; try{ await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.href.split('#')[0]}}); }catch(e){ _oauthBusy=false; toast('Lỗi Google: '+e.message); } }
 async function signOut(){ try{ await sb.auth.signOut(); }catch(e){} AUTH=null; try{ localStorage.removeItem('eqgym_migrated'); }catch(e){} UI.settingsOpen=false; render(); toast('Đã đăng xuất'); }
 async function initAuth(){
   if(!BACKEND) return;
-  try{ const qp=new URLSearchParams(location.search); const oe=qp.get('error'); if(oe){ const desc=(qp.get('error_description')||oe).replace(/\+/g,' '); console.error('oauth callback error',oe,desc); toast('Đăng nhập lỗi: '+desc); } }catch(e){}
+  /* Link đăng nhập lỗi (hết hạn/đã dùng/khác trình duyệt) → mở sẵn khung đăng nhập bằng mã, báo lỗi dễ hiểu */
+  try{ const qp=new URLSearchParams(location.search), hp=new URLSearchParams((location.hash||'').replace(/^#/,'')); const oe=qp.get('error')||hp.get('error'); if(oe){ const code=qp.get('error_code')||hp.get('error_code')||''; const desc=(qp.get('error_description')||hp.get('error_description')||oe).replace(/\+/g,' '); console.error('auth callback error',oe,code,desc); UI.otp={err:authErrVi(code+' '+desc)}; UI.settingsOpen=true; } }catch(e){}
   const {data,error}=await sb.auth.getSession(); if(error){ console.error('getSession',error); toast('Lỗi đăng nhập: '+error.message); }
   await applySession(data.session); cleanAuthParams(); sb.auth.onAuthStateChange((_e,session)=>{ applySession(session); });
 }
@@ -808,7 +859,7 @@ function closePremium(){ UI.premOpen=false; render(); }
 function modalPremium(){
   return `<div onclick="if(event.target===this)closePremium()" style="position:fixed;inset:0;background:rgba(15,25,35,.45);backdrop-filter:blur(6px);z-index:75;display:flex;align-items:flex-end;justify-content:center"><div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .28s ease">
     <div style="background:linear-gradient(155deg,#0F1923,#0A6E5D);border-radius:18px;padding:18px 16px;color:#fff"><h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:19px;color:#fff">EQ GYM Premium</h3><div style="font-size:26px;font-weight:900;font-family:'Space Grotesk';margin:6px 0">${fmt(PREMIUM_PRICE)}đ <span style="font-size:13px;color:#7FA39B;font-weight:600">· trọn đời, thanh toán 1 lần</span></div>
-    <ul style="margin:10px 0;padding-left:2px;list-style:none">${['Mở khóa toàn bộ 30 buổi tập & luyện tập','Workbook thực hành mỗi ngày ngay trong app','Coach AI chấm điểm 4 trụ & tình huống không giới hạn','Bảng thi đua & tham gia cộng đồng rèn luyện EQ GYM'].map(x=>`<li style="font-size:13.5px;padding:4px 0;display:flex;gap:8px"><span>✅</span><span>${x}</span></li>`).join('')}</ul></div>
+    <ul style="margin:10px 0;padding-left:2px;list-style:none">${['Mở khóa toàn bộ 30 buổi tập & luyện tập','Workbook thực hành mỗi ngày ngay trong app',(AI_ENABLED?'Coach AI chấm điểm 4 trụ & tình huống không giới hạn':'Chấm điểm 4 trụ & tình huống luyện tập không giới hạn'),'Bảng thi đua & tham gia cộng đồng rèn luyện EQ GYM'].map(x=>`<li style="font-size:13.5px;padding:4px 0;display:flex;gap:8px"><span>✅</span><span>${x}</span></li>`).join('')}</ul></div>
     <button onclick="startCheckout()" style="width:100%;margin-top:14px;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0FB89B,#0A8C77);color:#fff;min-height:50px">Nâng cấp ngay</button>
     <button onclick="closePremium()" style="width:100%;margin-top:10px;border:1px solid #E3E8EE;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;background:#fff;color:#0F1923;min-height:48px">Để sau</button></div></div>`;
 }
@@ -916,7 +967,7 @@ function modalPay(){
     } else if(st==='done'){
       inner=`<div style="text-align:center;padding:8px 0 4px"><div style="font-size:52px;line-height:1">🎉</div>
         <h3 style="margin:12px 0 4px;font-family:'Space Grotesk';font-size:19px;font-weight:700">Premium đã kích hoạt!</h3>
-        <p style="color:#5C6B7A;font-size:13px;margin:0;line-height:1.6;font-weight:600">${AUTH&&AUTH.premium_until?(isLifetime(AUTH.premium_until)?'Bạn được dùng <b style="color:#0F1923">trọn đời</b>. ':'Có hiệu lực đến <b style="color:#0F1923">'+new Date(AUTH.premium_until).toLocaleDateString('vi-VN')+'</b>. '):''}Toàn bộ 30 buổi tập, Coach AI và cộng đồng đã mở cho bạn.</p></div>
+        <p style="color:#5C6B7A;font-size:13px;margin:0;line-height:1.6;font-weight:600">${AUTH&&AUTH.premium_until?(isLifetime(AUTH.premium_until)?'Bạn được dùng <b style="color:#0F1923">trọn đời</b>. ':'Có hiệu lực đến <b style="color:#0F1923">'+new Date(AUTH.premium_until).toLocaleDateString('vi-VN')+'</b>. '):''}Toàn bộ 30 buổi tập${AI_ENABLED?', Coach AI':''} và cộng đồng đã mở cho bạn.</p></div>
         <button onclick="closePay()" style="${BTN};margin-top:16px">Bắt đầu luyện tập ›</button>`;
     } else if(st==='expired'){
       inner=`<h3 style="margin:0 0 4px;font-family:'Space Grotesk';font-size:17px;font-weight:700">⏱ Mã QR đã hết hạn</h3>
@@ -1032,7 +1083,7 @@ function viewHome(){
       ${(S.freezes||0)>0?`<span style="position:absolute;top:4px;right:6px;font-size:9.5px;font-weight:800;color:#2F6FBF">🧊${S.freezes}</span>`:''}${S.streak7?`<span style="position:absolute;top:4px;left:6px;font-size:10px">🏅</span>`:''}
       <b style="display:block;font-family:'Space Grotesk';font-size:17px;color:#B25E09">${S.streak>0?'🔥 ':''}${S.streak}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">Ngày liên tục</span>
     </div>
-    <div style="flex:1;background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:12px 6px;text-align:center"><b style="display:block;font-family:'Space Grotesk';font-size:17px;color:#0A6E5D">${sc.length?String(Math.round(sc.reduce((a,b)=>a+b,0)/sc.length)):'—'}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">Điểm TB AI</span></div>
+    <div style="flex:1;background:#fff;border:1px solid #E3E8EE;border-radius:15px;padding:12px 6px;text-align:center"><b style="display:block;font-family:'Space Grotesk';font-size:17px;color:#0A6E5D">${sc.length?String(Math.round(sc.reduce((a,b)=>a+b,0)/sc.length)):'—'}</b><span style="font-size:10.5px;color:#5C6B7A;font-weight:700">Điểm TB${AI_ENABLED?' AI':''}</span></div>
   </div>
   <div style="display:flex;gap:9px;margin:11px 16px 0">
     ${badges.map(b=>`<div onclick="${(b[0]==='Bậc Thầy EQ'&&latestCertMilestone())?'openCert()':''}" style="flex:1;background:#fff;border-radius:15px;padding:11px 4px;text-align:center;opacity:${b[2]?1:.6};border:1px solid ${b[2]?b[1]:'#E3E8EE'};cursor:${(b[0]==='Bậc Thầy EQ'&&latestCertMilestone())?'pointer':'default'}"><svg width="26" height="26" viewBox="0 0 100 100" style="display:block;margin:0 auto"><circle cx="50" cy="50" r="34" fill="none" stroke="${b[2]?b[1]:'#C7D0D9'}" stroke-width="13"/><circle cx="50" cy="50" r="9" fill="${b[2]?'#E85B5B':'#C7D0D9'}"/></svg><span style="font-size:9px;color:${b[2]?'#0F1923':'#8A97A5'};display:block;margin-top:5px;line-height:1.3;font-weight:800">${b[0]}</span></div>`).join('')}
@@ -1165,7 +1216,7 @@ function lessonWorkbook(n,step){
     <div style="background:linear-gradient(150deg,#0F1923,#3B2A6B 140%);border-radius:16px;padding:14px 15px;color:#fff;margin-bottom:12px">
       <div style="font-family:'Space Grotesk';font-size:10.5px;font-weight:700;letter-spacing:2px;color:#C4B5FD">SỔ TAY LUYỆN TẬP · BÀI ${n}</div>
       <b style="display:block;font-size:14.5px;margin-top:3px;line-height:1.35">${esc(LESSONS[n].title)}</b>
-      <p style="margin:6px 0 12px;font-size:12.5px;color:#D9D2F0;line-height:1.6;font-weight:600">Đọc ngay bên dưới, hoặc tải PDF để in ra và viết tay. Viết tay giúp bài học "ngấm" sâu hơn — rồi quay lại app nộp bài cho Coach AI.</p>
+      <p style="margin:6px 0 12px;font-size:12.5px;color:#D9D2F0;line-height:1.6;font-weight:600">Đọc ngay bên dưới, hoặc tải PDF để in ra và viết tay. Viết tay giúp bài học "ngấm" sâu hơn — rồi quay lại app nộp bài${AI_ENABLED?' cho Coach AI':''}.</p>
       <a href="${pdf}" target="_blank" rel="noopener" onclick="sfx('tap');wbEvent(${n})" style="display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:13px;font-size:13.5px;font-weight:800;background:#fff;color:#3B2A6B;min-height:46px">⬇ Tải / In workbook PDF</a>
     </div>`;
   h+=zvHint();
@@ -1197,13 +1248,13 @@ function lessonPractice(n,step){
   else h+=`<button onclick="genScenario(${n})" style="width:100%;margin-top:12px;border:1px dashed #0FB89B;border-radius:13px;padding:14px;font-size:13.5px;font-weight:800;cursor:pointer;background:#EAFBF6;color:#0A6E5D;min-height:50px">↻ Nhận ${ref?'góc phản chiếu để viết':'tình huống thực tế để luyện'}</button>`;
   h+=`<textarea id="ans" oninput="onAns()" placeholder="Viết câu trả lời / trải nghiệm thật của bạn... càng cụ thể càng nhiều EP" style="width:100%;min-height:150px;margin-top:12px;background:#F5F8FA;border:1px solid #E3E8EE;border-radius:13px;color:#0F1923;padding:13px;font-size:16px;resize:vertical;line-height:1.6">${esc(S.ans[n]||'')}</textarea>
     <div id="savedmsg" style="font-size:11.5px;color:#0A8C77;margin-top:5px;height:15px;font-weight:700"></div>
-    <button onclick="grade(${n})" ${UI.grading?'disabled':''} style="width:100%;margin-top:10px;border:none;border-radius:14px;padding:15px;font-size:14.5px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#E85B5B,#C74848);color:#fff;box-shadow:0 8px 22px rgba(232,91,91,.28);min-height:50px;opacity:${UI.grading?.55:1}">${UI.grading?'Coach đang chấm...':(S.graded[n]?'Nộp bài luyện tập lần nữa':'Nộp bài cho Coach AI chấm điểm')}</button>`;
+    <button onclick="grade(${n})" ${UI.grading?'disabled':''} style="width:100%;margin-top:10px;border:none;border-radius:14px;padding:15px;font-size:14.5px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#E85B5B,#C74848);color:#fff;box-shadow:0 8px 22px rgba(232,91,91,.28);min-height:50px;opacity:${UI.grading?.55:1}">${UI.grading?'Coach đang chấm...':(S.graded[n]?'Nộp bài luyện tập lần nữa':(AI_ENABLED?'Nộp bài cho Coach AI chấm điểm':'Nộp bài chấm điểm'))}</button>`;
   if(res) h+=`<div style="margin-top:13px;background:#EAFBF6;border-radius:15px;padding:14px 15px;color:#0F1923;border:1px solid #B6EDDF;animation:fade .3s">
     <div style="display:flex;align-items:center;gap:12px"><div style="width:58px;height:58px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 58px;border:4px solid #0FB89B"><b style="font-family:'Space Grotesk';font-size:19px;line-height:1;color:#0F1923">${res.score}</b><span style="font-size:8.5px;color:#5C6B7A;font-weight:700">/100</span></div>
-    <div><h4 style="margin:0;font-size:13.5px;color:#0A6E5D;font-weight:800">${res.by==='ai'?'Coach AI chấm':'Chấm offline (chưa nâng cấp Premium)'}</h4><div style="font-size:11px;color:#B27607;margin-top:2px;font-weight:800">${res.score>=80?'★★★ Xuất sắc':res.score>=55?'★★ Tốt':'★ Cần luyện thêm'} · Khung 4 trụ EQ</div>${prevSco!=null?`<div style="font-size:11.5px;font-weight:800;margin-top:3px;color:${res.score-prevSco>=0?'#0A8C77':'#C74848'}">${res.score-prevSco>=0?'▲ +'+(res.score-prevSco):'▼ '+(res.score-prevSco)} so với lần trước</div>`:''}</div></div>
+    <div><h4 style="margin:0;font-size:13.5px;color:#0A6E5D;font-weight:800">${res.by==='ai'?'Coach AI chấm':(AI_ENABLED?'Chấm offline (chưa nâng cấp Premium)':'Chấm tự động theo tiêu chí')}</h4><div style="font-size:11px;color:#B27607;margin-top:2px;font-weight:800">${res.score>=80?'★★★ Xuất sắc':res.score>=55?'★★ Tốt':'★ Cần luyện thêm'} · Khung 4 trụ EQ</div>${prevSco!=null?`<div style="font-size:11.5px;font-weight:800;margin-top:3px;color:${res.score-prevSco>=0?'#0A8C77':'#C74848'}">${res.score-prevSco>=0?'▲ +'+(res.score-prevSco):'▼ '+(res.score-prevSco)} so với lần trước</div>`:''}</div></div>
     ${pillarBarsHtml(res.dims)}
     <div style="font-size:13.5px;margin-top:6px;line-height:1.65;color:#22303D">${esc(res.feedback)}</div>${res.tip?`<div style="font-size:12.5px;margin-top:9px;background:#fff;border-radius:11px;padding:9px 12px;border:1px dashed #0FB89B;line-height:1.55;color:#22303D"><b style="color:#0A6E5D">Gợi ý:</b> ${esc(res.tip)}</div>`:''}</div>`;
-  h+=`<div style="font-size:11.5px;color:#5C6B7A;margin-top:9px;line-height:1.55">${aiReady()?'Coach AI sẵn sàng chấm bài.':'Chưa bật AI — bài được chấm offline. Nâng cấp Premium để Coach AI chấm điểm & nhận xét.'}</div>`;
+  h+=`<div style="font-size:11.5px;color:#5C6B7A;margin-top:9px;line-height:1.55">${aiReady()?'Coach AI sẵn sàng chấm bài.':(AI_ENABLED?'Chưa bật AI — bài được chấm offline. Nâng cấp Premium để Coach AI chấm điểm & nhận xét.':'Bài được chấm tự động theo tiêu chí của chương trình. Coach AI đang tạm dừng để nâng cấp an toàn.')}</div>`;
   h+=progressPanel(n);
   const hist=S.history[n]||[];
   if(hist.length){ h+=`<div style="margin-top:16px"><div style="font-family:'Space Grotesk';font-size:10.5px;font-weight:700;letter-spacing:1.5px;color:#2F6FBF">LỊCH SỬ LUYỆN TẬP (${hist.length})</div>`;
@@ -1254,7 +1305,7 @@ function viewChat(){
 function fixedUI(){
   let h='';
   if(UI.view!=='lesson'){
-    const items=[['home','⚑','Lộ trình'],['quiz','◈','Test EQ'],['chat','✦','Coach'],['journal','✎','Nhật ký']];
+    const items=[['home','⚑','Lộ trình'],['quiz','◈','Test EQ']]; if(AI_ENABLED) items.push(['chat','✦','Coach']); items.push(['journal','✎','Nhật ký']);
     if(CODE_MODE||BACKEND) items.push(['rank','🏆','Thi đua']);
     items.push(['settings','⚙','Tài khoản']);
     h+=`<div style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(255,255,255,.97);backdrop-filter:blur(14px);border-top:1px solid #E3E8EE;display:flex;padding:6px 0 calc(env(safe-area-inset-bottom) + 8px);z-index:40">`;

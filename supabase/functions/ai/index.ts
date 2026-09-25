@@ -37,6 +37,11 @@ Deno.serve(async (req) => {
     if (!token) return json({ error: "unauthorized" }, 401);
 
     const sb = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    // Công tắc tắt AI (settings.ai_enabled) — thiếu dòng hoặc đọc lỗi thì coi như TẮT.
+    const { data: sw } = await sb.from("settings").select("value").eq("key", "ai_enabled").maybeSingle();
+    if (sw?.value !== true) return json({ error: "ai_disabled" }, 503);
+
     const { data: userData } = await sb.auth.getUser(token);
     const user = userData?.user;
     if (!user) return json({ error: "unauthorized" }, 401);
