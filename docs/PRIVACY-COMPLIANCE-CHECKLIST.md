@@ -87,5 +87,5 @@ Google Sign-In · SePay/VietinBank · GitHub Actions (backup DB mã hoá hằng 
 6. Nhóm Zalo có mở cho **mọi người** (kể cả chưa Premium) để hỗ trợ đăng nhập không? Hiện em đặt link "Nhắn nhóm hỗ trợ Zalo" ở màn đăng nhập cho tất cả.
 7. Trang `dangky/` cũ (chuyển khoản tay, nhóm Facebook) còn dùng không → gỡ hay cập nhật?
 8. Những ai là **admin**? (Để bật xác thực 2 lớp cho từng người.)
-10. Email đăng nhập gửi từ địa chỉ nào (vd `noreply@evolve.vn`)? Ai quản lý DNS tên miền evolve.vn để xác minh cho dịch vụ gửi mail?
 9. Ngoài 115, có **đường dây hỗ trợ tâm lý / chuyên gia đối tác** nào muốn giới thiệu cho học viên khi cần không?
+10. Email đăng nhập gửi từ địa chỉ nào (vd `noreply@evolve.vn`)? Ai quản lý DNS tên miền evolve.vn để xác minh cho dịch vụ gửi mail?
